@@ -1,0 +1,312 @@
+---
+import type { Lang } from '../i18n/ui';
+import { ui } from '../i18n/ui';
+import { TEMPLATES, CATEGORY_ORDER } from '../cards/templates';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const c = ui[lang].cards;
+
+// Runtime strings the client script needs.
+const strings = {
+  ready: c.ready,
+  rendering: c.rendering,
+  fetched: c.fetched,
+  fetchFailed: c.fetchFailed,
+  pushed: c.pushed,
+  pushFailed: c.pushFailed,
+};
+
+// Per-template hint shown above the editor when a card is picked.
+const hints: Record<string, string> = {};
+for (const tpl of TEMPLATES) hints[tpl.id] = c.templates[tpl.id]?.hint ?? '';
+
+const props = { strings, hints };
+
+// Filter chips: only categories that actually have templates.
+const cats = CATEGORY_ORDER.map((cat) => ({
+  cat,
+  label: c.categories[cat],
+  count: TEMPLATES.filter((t) => t.category === cat).length,
+})).filter((g) => g.count > 0);
+
+const inputCls =
+  'mt-1.5 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition focus:border-ink/40 focus:ring-2 focus:ring-ink/5';
+const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/50';
+---
+
+<section class="cs py-6 sm:py-8" data-cards={JSON.stringify(props)}>
+  <div class="mx-auto max-w-6xl px-6">
+    {/* ── Filter row ─────────────────────────────────────────────────── */}
+    <div id="csFilters" class="flex flex-wrap items-center gap-2">
+      <button type="button" data-filter="all" class="cs-filter" aria-current="true">{c.allLabel}</button>
+      {
+        cats.map((g) => (
+          <button type="button" data-filter={g.cat} class="cs-filter" aria-current="false">
+            {g.label}
+          </button>
+        ))
+      }
+    </div>
+
+    {/* ── Gallery: one live thumbnail per template ───────────────────── */}
+    <div id="csTemplates" class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      {
+        TEMPLATES.map((tpl) => (
+          <button type="button" data-tpl={tpl.id} data-cat={tpl.category} class="cs-tile" aria-current="false">
+            <span class="cs-tile-screen">
+              <canvas data-thumb={tpl.id} width="240" height="400"></canvas>
+            </span>
+            <span class="mt-2.5 flex items-center justify-between gap-2">
+              <span class="font-serif text-[15px] leading-tight text-ink">{c.templates[tpl.id]?.name ?? tpl.id}</span>
+              <span class="shrink-0 rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[10px] text-ink/45">
+                {c.categories[tpl.category]}
+              </span>
+            </span>
+          </button>
+        ))
+      }
+    </div>
+
+    {/* ── Editor + device preview ────────────────────────────────────── */}
+    <div class="mt-14 grid gap-10 border-t border-ink/10 pt-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div class="max-w-xl">
+        <h2 class="font-mono text-xs uppercase tracking-[0.16em] text-accent-600">{c.editorTitle}</h2>
+        <p id="csHint" class="mt-2 min-h-[1.5em] text-sm/6 text-ink/60"></p>
+
+        <label class="mt-4 block">
+          <span class={labelCls}>{c.contentLabel}</span>
+          <textarea id="csContent" rows="3" class={inputCls}></textarea>
+        </label>
+        <label class="mt-4 block">
+          <span class={labelCls}>{c.title2Label}</span>
+          <input id="csSub" type="text" class={inputCls} />
+        </label>
+        <label id="csItemsWrap" class="mt-4 block">
+          <span class={labelCls}>{c.itemsLabel}</span>
+          <textarea id="csItems" rows="5" placeholder={c.itemsHint} class={inputCls}></textarea>
+        </label>
+
+        {/* Photo picker — shown only for the photo template */}
+        <div id="csPhotoWrap" class="mt-4 hidden">
+          <span class={labelCls}>Photo</span>
+          <div class="mt-1.5 flex flex-wrap items-center gap-3">
+            <button id="csPhotoBtn" type="button" class="cs-btn cs-btn-ghost">{c.photoBtn}</button>
+            <input id="csPhotoFile" type="file" accept="image/*" class="hidden" />
+            <span class="text-xs text-ink/45">{c.photoHint}</span>
+          </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <label class="cs-check">
+            <input id="csFit" type="checkbox" checked />
+            <span>{c.fitLabel}</span>
+          </label>
+          <label class="cs-check">
+            <input id="csDither" type="checkbox" checked />
+            <span>{c.ditherLabel}</span>
+          </label>
+          <button id="csFetch" type="button" class="cs-btn cs-btn-ghost">{c.fetchBtn}</button>
+        </div>
+        <p class="mt-2 max-w-[60ch] text-xs/5 text-ink/45">{c.ditherHint}</p>
+
+        {/* Export format */}
+        <h2 class="mt-8 font-mono text-xs uppercase tracking-[0.16em] text-accent-600">{c.formatLabel}</h2>
+        <div class="mt-3 grid gap-2.5 sm:grid-cols-2">
+          <label class="cs-radio">
+            <input type="radio" name="csFormat" value="bmp" checked />
+            <span class="cs-radio-body">
+              <span class="cs-radio-title">BMP · 1-bit</span>
+              <span class="cs-radio-hint">{c.bmpHint}</span>
+            </span>
+          </label>
+          <label class="cs-radio">
+            <input type="radio" name="csFormat" value="png" />
+            <span class="cs-radio-body">
+              <span class="cs-radio-title">PNG</span>
+              <span class="cs-radio-hint">{c.pngHint}</span>
+            </span>
+          </label>
+        </div>
+
+        {/* Push / download */}
+        <label class="mt-6 block">
+          <span class={labelCls}>{c.deviceUrlLabel}</span>
+          <input id="csDevice" type="text" value="http://192.168.4.1" class={inputCls} />
+        </label>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="csDownload" type="button" class="cs-btn cs-btn-ghost">{c.downloadBtn}</button>
+          <button id="csPush" type="button" class="cs-btn cs-btn-primary">{c.pushBtn}</button>
+        </div>
+
+        <p id="csStatus" class="mt-4 font-mono text-xs text-ink/60">{c.ready}</p>
+        <p class="mt-2 max-w-[60ch] text-xs/5 text-ink/45">{c.offlineNote}</p>
+      </div>
+
+      {/* Device preview */}
+      <aside class="justify-self-center lg:sticky lg:top-6 lg:self-start">
+        <div class="rounded-[26px] border border-ink/15 bg-white p-3 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.35)]">
+          <div class="overflow-hidden rounded-md ring-1 ring-ink/10">
+            <canvas id="csCanvas" width="480" height="800" class="cs-canvas block h-auto w-full" aria-label="Card preview"></canvas>
+          </div>
+        </div>
+        <p class="mt-3 text-center font-mono text-[11px] tracking-wide text-ink/45">480 × 800 · 1-bit</p>
+      </aside>
+    </div>
+
+    <p class="mt-10 border-t border-ink/10 pt-4 text-xs/5 text-ink/40">{c.footNote}</p>
+  </div>
+</section>
+
+<style>
+  /* Filter chips */
+  .cs-filter {
+    border: 1px solid rgba(17, 17, 17, 0.15);
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: rgba(17, 17, 17, 0.6);
+    cursor: pointer;
+    transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  }
+  .cs-filter:hover {
+    color: #111;
+    border-color: rgba(17, 17, 17, 0.3);
+  }
+  .cs-filter[aria-current='true'] {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+  }
+
+  /* Gallery tiles */
+  .cs-tile {
+    display: block;
+    text-align: left;
+    border: 1px solid rgba(17, 17, 17, 0.1);
+    border-radius: 14px;
+    background: #fff;
+    padding: 10px;
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .cs-tile:hover {
+    transform: translateY(-2px);
+    border-color: rgba(17, 17, 17, 0.28);
+    box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.4);
+  }
+  .cs-tile[aria-current='true'] {
+    border-color: #111;
+    box-shadow: 0 0 0 2px #111;
+  }
+  .cs-tile-screen {
+    display: block;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.06);
+    line-height: 0;
+  }
+  .cs-tile-screen canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Buttons */
+  .cs-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .cs-btn-ghost {
+    border: 1px solid rgba(17, 17, 17, 0.2);
+    background: #fff;
+    color: #111;
+  }
+  .cs-btn-ghost:hover {
+    border-color: #111;
+  }
+  .cs-btn-primary {
+    border: 1px solid #111;
+    background: #111;
+    color: #fff;
+    font-weight: 600;
+  }
+  .cs-btn-primary:hover {
+    background: #26241f;
+  }
+
+  .cs-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(17, 17, 17, 0.7);
+    cursor: pointer;
+  }
+  .cs-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: #111;
+  }
+
+  .cs-radio {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border: 1px solid rgba(17, 17, 17, 0.12);
+    border-radius: 12px;
+    background: #fff;
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .cs-radio:has(input:checked) {
+    border-color: #111;
+    background: rgba(17, 17, 17, 0.03);
+  }
+  .cs-radio input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: #111;
+  }
+  .cs-radio-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .cs-radio-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #111;
+  }
+  .cs-radio-hint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: rgba(17, 17, 17, 0.55);
+  }
+
+  .cs-canvas {
+    image-rendering: pixelated;
+  }
+</style>
+
+<script>
+  import { initCardStudio } from '../cards/studio';
+
+  const section = document.querySelector('[data-cards]');
+  if (section) {
+    const props = JSON.parse(section.getAttribute('data-cards') || '{}');
+    initCardStudio(props);
+  }
+</script>

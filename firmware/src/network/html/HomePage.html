@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OnePage Reader</title>
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --paper-2: #ece2ce;
+        --card: #fffdf8;
+        --ink: #2a2018;
+        --ink-soft: #6f6253;
+        --ink-faint: #a4967f;
+        --line: #e3d9c6;
+        --seal: #a63a24;
+        --seal-soft: #c05a41;
+        --shadow: rgba(60, 42, 20, 0.12);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #17140f;
+          --paper-2: #211b13;
+          --card: #211c15;
+          --ink: #ece4d4;
+          --ink-soft: #b3a78f;
+          --ink-faint: #7d715d;
+          --line: #332c21;
+          --seal: #d9614a;
+          --seal-soft: #e88268;
+          --shadow: rgba(0, 0, 0, 0.4);
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+          "Songti SC", "STSong", serif;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 40px 24px 60px;
+        background: radial-gradient(1100px 520px at 100% -12%, var(--paper-2), transparent 62%),
+          var(--paper);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      .masthead {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding-bottom: 14px;
+        border-bottom: 3px double var(--line);
+      }
+      .seal-mark {
+        flex: none;
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        background: var(--seal);
+        color: #fff8f0;
+        display: grid;
+        place-items: center;
+        font-size: 1.15rem;
+        box-shadow: 0 4px 14px -6px var(--seal);
+      }
+      .masthead h1 {
+        margin: 0;
+        font-size: 1.7rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        line-height: 1.05;
+      }
+      .masthead .sub {
+        margin: 2px 0 0;
+        font-size: 0.82rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      .nav-links {
+        margin: 26px 0 30px;
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        border-bottom: 1px solid var(--line);
+      }
+      .nav-links a {
+        position: relative;
+        padding: 11px 18px;
+        color: var(--ink-soft);
+        text-decoration: none;
+        font-size: 0.96rem;
+        letter-spacing: 0.01em;
+        transition: color 0.2s;
+      }
+      .nav-links a::after {
+        content: "";
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: -1px;
+        height: 2px;
+        background: var(--seal);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.28s ease;
+      }
+      .nav-links a:hover { color: var(--ink); }
+      .nav-links a:hover::after { transform: scaleX(1); }
+      .nav-links a.active { color: var(--seal); font-weight: 600; }
+      .nav-links a.active::after { transform: scaleX(1); }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 22px 24px;
+        margin: 16px 0;
+        box-shadow: 0 1px 0 var(--shadow), 0 16px 38px -26px var(--shadow);
+        animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .card:nth-of-type(2) { animation-delay: 0.07s; }
+      .card:nth-of-type(3) { animation-delay: 0.14s; }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: none; }
+      }
+      h2 {
+        margin: 0 0 6px;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      h2 .rule {
+        display: inline-block;
+        width: 26px;
+        height: 2px;
+        background: var(--seal);
+        vertical-align: middle;
+        margin-right: 10px;
+      }
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 13px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .info-row:last-child { border-bottom: none; }
+      .label {
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        font-family: "Optima", "Candara", system-ui, sans-serif;
+      }
+      .value { color: var(--ink); font-size: 1.05rem; }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        background: rgba(166, 58, 36, 0.1);
+        color: var(--seal);
+        font-size: 0.9rem;
+        font-family: "Optima", "Candara", system-ui, sans-serif;
+      }
+      .status::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--seal);
+        box-shadow: 0 0 0 3px rgba(166, 58, 36, 0.18);
+      }
+      .colophon {
+        text-align: center;
+        color: var(--ink-faint);
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        margin: 26px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="masthead">
+      <div class="seal-mark">壹</div>
+      <div>
+        <h1>OnePage Reader</h1>
+        <p class="sub">E-ink Companion Console</p>
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a href="/" class="active">Home</a>
+      <a href="/files">File Manager</a>
+      <a href="/settings">Settings</a>
+      <a href="/fonts">Fonts</a>
+      <a href="/txt-index">TXT Index</a>
+    </div>
+
+    <div class="card">
+      <h2><span class="rule"></span>Device Status</h2>
+      <div class="info-row">
+        <span class="label">Version</span>
+        <span class="value" id="version"></span>
+      </div>
+      <div class="info-row">
+        <span class="label">WiFi</span>
+        <span class="status">Connected</span>
+      </div>
+      <div class="info-row">
+        <span class="label">IP Address</span>
+        <span class="value" id="ip-address"></span>
+      </div>
+      <div class="info-row">
+        <span class="label">Free Memory</span>
+        <span class="value" id="free-heap"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="colophon">OnePage Reader · Open Source · Crafted for slow reading</p>
+    </div>
+  <script>
+    async function fetchStatus() {
+      try {
+        const response = await fetch('/api/status');
+        if (!response.ok) {
+          throw new Error('Failed to fetch status: ' + response.status + ' ' + response.statusText);
+        }
+        const data = await response.json();
+        document.getElementById('version').textContent = data.version || 'N/A';
+        document.getElementById('ip-address').textContent = data.ip || 'N/A';
+        document.getElementById('free-heap').textContent = data.freeHeap
+          ? data.freeHeap.toLocaleString() + ' bytes'
+          : 'N/A';
+      } catch (error) {
+        console.error('Error fetching status:', error);
+      }
+    }
+
+    // Fetch status on page load
+    window.onload = fetchStatus;
+  </script>
+  </body>
+</html>

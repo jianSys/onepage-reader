@@ -1,0 +1,268 @@
+---
+import type { Lang } from '../i18n/ui';
+import { ui } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const f = ui[lang].firmware;
+
+// Manifest AND .bin are hosted SAME-ORIGIN under public/firmware/. GitHub release
+// assets send no Access-Control-Allow-Origin, so a cross-origin browser fetch is
+// blocked by CORS — same-origin sidesteps that. The manifest's part path is
+// relative, resolved against the manifest URL at flash time.
+const base = import.meta.env.BASE_URL;
+const MANIFEST_URL = `${base}firmware/manifest.json`;
+
+// Strings the client flasher needs at runtime.
+const t = {
+  manifestUrl: MANIFEST_URL,
+  connecting: f.connecting,
+  flashing: f.flashing,
+  flashDone: f.flashDone,
+  flashErr: f.flashErr,
+  noSerial: f.noSerial,
+  monitorBtn: f.monitorBtn,
+  monitorStopBtn: f.monitorStopBtn,
+  monitorHint: f.monitorHint,
+  monitorClosed: f.monitorClosed,
+};
+---
+
+<section class="py-12 sm:py-16" data-fw={JSON.stringify(t)}>
+  <div class="mx-auto max-w-3xl px-6">
+    <p class="font-mono text-xs tracking-wider text-accent-600 uppercase">{f.eyebrow}</p>
+    <h1 class="mt-3 font-serif text-3xl font-medium tracking-tight text-balance text-ink sm:text-4xl">{f.title}</h1>
+    <p class="mt-4 max-w-[60ch] text-base/7 text-pretty text-ink/70">{f.lede}</p>
+
+    {/* ── Browser flash (Web Serial via esptool-js) ──────────────────────── */}
+    <div class="mt-12 rounded-xl border border-ink/12 bg-surface p-6 sm:p-8">
+      <h2 class="font-serif text-xl font-medium tracking-tight text-ink">{f.webTitle}</h2>
+      <p class="mt-2 max-w-[56ch] text-sm/6 text-ink/65">{f.webLede}</p>
+
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <button
+          id="fwFlash"
+          type="button"
+          class="rounded-full bg-accent-600 px-5 py-2.5 font-mono text-sm font-medium text-paper transition hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >{f.connectBtn}</button>
+      </div>
+
+      {/* Progress + status (hidden until a flash starts) */}
+      <div id="fwProgressWrap" class="mt-6 hidden">
+        <div class="h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
+          <div id="fwProgressBar" class="h-full rounded-full bg-accent-500 transition-all duration-300" style="width:0%"></div>
+        </div>
+        <p id="fwProgressText" class="mt-2 font-mono text-xs text-ink/55"></p>
+      </div>
+
+      <details id="fwLogPanel" class="mt-3 hidden text-right">
+        <summary class="inline cursor-pointer select-none list-none font-mono text-[10px] text-ink/30 transition hover:text-ink/55 [&::-webkit-details-marker]:hidden">
+          {f.logTitle}
+        </summary>
+        <pre
+          id="fwLog"
+          class="mt-2 max-h-44 overflow-auto rounded border border-ink/8 bg-ink/[0.025] p-2 text-left font-mono text-[10px]/5 whitespace-pre-wrap text-ink/45"
+        ></pre>
+      </details>
+
+      {/* ── Serial monitor: boot/runtime log, auto-attached after a successful flash ── */}
+      <div class="mt-6 border-t border-ink/8 pt-5">
+        <div class="flex flex-wrap items-center gap-3">
+          <h3 class="font-mono text-xs tracking-wider text-ink/70 uppercase">{f.monitorTitle}</h3>
+          <button
+            id="fwMonitorToggle"
+            type="button"
+            class="rounded-full border border-ink/20 px-4 py-1.5 font-mono text-xs font-medium text-ink transition hover:border-accent-600 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
+            data-btn-idle={f.monitorBtn}
+            data-btn-running={f.monitorStopBtn}
+          >{f.monitorBtn}</button>
+          <button id="fwMonitorClear" type="button" class="font-mono text-xs text-ink/40 transition hover:text-ink/70">Clear</button>
+        </div>
+        <pre
+          id="fwMonitor"
+          class="mt-3 hidden max-h-64 overflow-auto rounded border border-ink/8 bg-ink/[0.04] p-2 font-mono text-[10px]/5 whitespace-pre-wrap text-ink/60"
+        ></pre>
+        <p class="mt-2 max-w-[56ch] text-xs/5 text-ink/45">{f.monitorHint}</p>
+      </div>
+
+      <p class="mt-4 font-mono text-xs text-ink/45">{f.browserNote}</p>
+      <p id="fwUnsupported" class="mt-3 hidden max-w-[56ch] text-sm/6 text-accent-700">{f.unsupported}</p>
+    </div>
+
+    {/* ── Safety notes ───────────────────────────────────────────────────── */}
+    <div class="mt-10">
+      <h2 class="font-mono text-sm font-medium tracking-wider text-ink/80 uppercase">{f.notesTitle}</h2>
+      <ul class="mt-4 space-y-3">
+        {f.notes.map((n) => (
+          <li class="flex gap-3 text-sm/6 text-ink/65">
+            <span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent-500" aria-hidden="true"></span>
+            <span class="max-w-[62ch]">{n}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { flash, NoSerialError } from '../firmware/flash';
+  import { SerialMonitor } from '../firmware/monitor';
+
+  const section = document.querySelector('[data-fw]');
+  if (section) {
+    const T = JSON.parse(section.getAttribute('data-fw') || '{}');
+    const $ = (id: string) => document.getElementById(id);
+    const btnStub = $('fwFlash') as HTMLButtonElement | null;
+    const wrap = $('fwProgressWrap');
+    const bar = $('fwProgressBar');
+    const text = $('fwProgressText');
+    const logPanel = $('fwLogPanel') as HTMLDetailsElement | null;
+    const log = $('fwLog');
+    const unsupported = $('fwUnsupported');
+    const monBtn = $('fwMonitorToggle') as HTMLButtonElement | null;
+    const monClear = $('fwMonitorClear') as HTMLButtonElement | null;
+    const monPre = $('fwMonitor');
+
+    // No Web Serial → disable the buttons and show the notice up front.
+    if (!('serial' in navigator)) {
+      unsupported?.classList.remove('hidden');
+      if (btnStub) btnStub.disabled = true;
+      if (monBtn) monBtn.disabled = true;
+      if (monClear) monClear.classList.add('hidden');
+    }
+
+    const setStatus = (msg: string) => {
+      if (text) text.textContent = msg;
+    };
+    const setProgress = (pct: number) => {
+      if (bar) bar.style.width = pct + '%';
+    };
+    const appendLog = (msg: string) => {
+      if (!log) return;
+      logPanel?.classList.remove('hidden');
+      const time = new Date().toLocaleTimeString();
+      log.textContent += `[${time}] ${msg}\n`;
+      log.scrollTop = log.scrollHeight;
+    };
+
+    // ── Serial monitor ─: raw Web Serial read of the device boot/runtime log.
+    const monitor = new SerialMonitor();
+    let lastFlashPort: SerialPort | null = null;
+
+    const setMonitorBtn = (running: boolean) => {
+      if (!monBtn) return;
+      monBtn.textContent = running ? monBtn.dataset.btnRunning! : monBtn.dataset.btnIdle!;
+    };
+    const appendMonitor = (text: string) => {
+      if (!monPre) return;
+      monPre.classList.remove('hidden');
+      monPre.textContent += text;
+      // Keep the buffer bounded (long-running sessions).
+      if (monPre.textContent.length > 200000) {
+        monPre.textContent = monPre.textContent.slice(-150000);
+      }
+      monPre.scrollTop = monPre.scrollHeight;
+    };
+
+    async function stopMonitor() {
+      await monitor.stop();
+      setMonitorBtn(false);
+    }
+
+    async function startMonitor(port?: SerialPort | null) {
+      if (monitor.isRunning()) return;
+      if (monBtn) monBtn.disabled = true;
+      try {
+        await monitor.start({
+          port: port ?? undefined,
+          onData: appendMonitor,
+          onLog: appendMonitor,
+          onClose: () => {
+            appendMonitor('\n' + T.monitorClosed + '\n');
+            setMonitorBtn(false);
+          },
+        });
+        setMonitorBtn(true);
+      } catch (err) {
+        appendMonitor(`\n⚠ ${(err as Error).message}\n`);
+        setMonitorBtn(false);
+      } finally {
+        if (monBtn) monBtn.disabled = false;
+      }
+    }
+
+    monBtn?.addEventListener('click', () => {
+      if (monitor.isRunning()) stopMonitor();
+      else startMonitor(lastFlashPort); // reuse the granted port when available
+    });
+    monClear?.addEventListener('click', () => {
+      if (monPre) monPre.textContent = '';
+    });
+
+    async function resolveBin(): Promise<{ url: string; offset: number }> {
+      // Manifest is same-origin; its part path is relative to the manifest URL.
+      const manifestUrl = new URL(T.manifestUrl, location.href);
+      appendLog(`Loading manifest: ${manifestUrl.href}`);
+      const manifest = await (await fetch(manifestUrl)).json();
+      const part = manifest.builds[0].parts[0];
+      const url = new URL(part.path, manifestUrl).href;
+      appendLog(`Firmware image: ${url} @ 0x${Number(part.offset).toString(16)}`);
+      return { url, offset: part.offset };
+    }
+
+    async function run() {
+      wrap?.classList.remove('hidden');
+      if (log) {
+        log.textContent = '';
+      }
+      if (logPanel) {
+        logPanel.open = false;
+        logPanel.classList.add('hidden');
+      }
+      setProgress(0);
+      setStatus(T.connecting);
+      if (btnStub) btnStub.disabled = true;
+      try {
+        const { url, offset } = await resolveBin();
+        let isWriting = false;
+        const { port } = await flash({
+          binUrl: url,
+          offset,
+          onProgress: (written, total) => {
+            isWriting = true;
+            const pct = total ? Math.round((written / total) * 100) : 0;
+            setProgress(pct);
+            setStatus(`${T.flashing} ${pct}%`);
+          },
+          onLog: (msg) => {
+            appendLog(msg);
+            if (!isWriting) setStatus(msg);
+          },
+        });
+        setProgress(100);
+        setStatus('✓ ' + T.flashDone);
+        // Keep the granted port and auto-attach the monitor so the boot log
+        // ("flash success?" answer) streams into the panel without another click.
+        lastFlashPort = port;
+        startMonitor(port);
+      } catch (err) {
+        if (err instanceof NoSerialError) {
+          setStatus(T.noSerial);
+        } else if (err && (err as DOMException).name === 'NotFoundError') {
+          // User dismissed the port picker — quietly reset.
+          wrap?.classList.add('hidden');
+        } else {
+          appendLog(`ERROR: ${(err as Error).message}`);
+          if (logPanel) logPanel.open = true;
+          setStatus(T.flashErr + ' (' + (err as Error).message + ')');
+        }
+      } finally {
+        if (btnStub) btnStub.disabled = false;
+      }
+    }
+
+    btnStub?.addEventListener('click', () => run());
+  }
+</script>

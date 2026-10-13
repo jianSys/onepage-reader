@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TXT Index · OnePage Reader</title>
+    <style>
+      :root {
+        --paper: #f6f1e7; --paper-2: #ece2ce; --card: #fffdf8;
+        --ink: #2a2018; --ink-soft: #6f6253; --ink-faint: #a4967f;
+        --line: #e3d9c6; --seal: #a63a24; --seal-soft: #c05a41;
+        --shadow: rgba(60, 42, 20, 0.12);
+        --ok: #357a44; --warn: #b8791f; --err: #b23b2e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #17140f; --paper-2: #211b13; --card: #211c15;
+          --ink: #ece4d4; --ink-soft: #b3a78f; --ink-faint: #7d715d;
+          --line: #332c21; --seal: #d9614a; --seal-soft: #e88268;
+          --shadow: rgba(0, 0, 0, 0.4);
+          --ok: #6fce8a; --warn: #e0b062; --err: #e0685a;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Songti SC", "STSong", serif; max-width: 760px; margin: 0 auto; padding: 40px 24px 60px; background: radial-gradient(1100px 520px at 100% -12%, var(--paper-2), transparent 62%), var(--paper); color: var(--ink); -webkit-font-smoothing: antialiased; }
+      .masthead { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 3px double var(--line); }
+      .seal-mark { flex: none; width: 42px; height: 42px; border-radius: 8px; background: var(--seal); color: #fff8f0; display: grid; place-items: center; font-size: 1.15rem; box-shadow: 0 4px 14px -6px var(--seal); }
+      .masthead h1 { margin: 0; font-size: 1.7rem; font-weight: 600; line-height: 1.05; }
+      .masthead .sub { margin: 2px 0 0; font-size: 0.82rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); }
+      h2 { margin: 0 0 6px; font-size: 1.15rem; font-weight: 600; color: var(--ink); }
+      h2 .rule { display: inline-block; width: 26px; height: 2px; background: var(--seal); vertical-align: middle; margin-right: 10px; }
+      .nav-links { margin: 26px 0 30px; display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+      .nav-links a { position: relative; padding: 11px 18px; color: var(--ink-soft); text-decoration: none; font-size: 0.96rem; transition: color 0.2s; }
+      .nav-links a::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: -1px; height: 2px; background: var(--seal); transform: scaleX(0); transform-origin: left; transition: transform 0.28s ease; }
+      .nav-links a:hover { color: var(--ink); }
+      .nav-links a:hover::after { transform: scaleX(1); }
+      .nav-links a.active { color: var(--seal); font-weight: 600; }
+      .nav-links a.active::after { transform: scaleX(1); }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; margin: 16px 0; box-shadow: 0 1px 0 var(--shadow), 0 16px 38px -26px var(--shadow); animation: rise 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+      .card:nth-of-type(3) { animation-delay: 0.07s; }
+      .card:nth-of-type(4) { animation-delay: 0.14s; }
+      @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+      .btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 8px; background: var(--seal); color: #fff8f0; font-size: 0.92rem; font-family: "Optima", "Candara", system-ui, sans-serif; cursor: pointer; margin-right: 8px; transition: transform 0.12s, background 0.2s, box-shadow 0.2s; box-shadow: 0 6px 16px -8px var(--seal); }
+      .btn:hover { background: var(--seal-soft); }
+      .btn:active { transform: translateY(1px); }
+      .btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+      th, td { padding: 11px 10px; border-bottom: 1px dashed var(--line); text-align: left; }
+      th { font-weight: 600; color: var(--ink-faint); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; font-family: "Optima", "Candara", system-ui, sans-serif; }
+      .status-ok { color: var(--ok); }
+      .status-pending { color: var(--warn); }
+      .status-error { color: var(--err); }
+      #progress-section { display: none; }
+      #progress-bar-wrap { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 12px 0; }
+      #progress-fill { height: 100%; background: var(--seal); width: 0%; transition: width 0.3s; }
+      #log { font-size: 0.82rem; max-height: 220px; overflow-y: auto; font-family: "SF Mono", ui-monospace, Menlo, monospace; color: var(--ink-soft); margin-top: 10px; }
+      .info { font-size: 0.85rem; color: var(--ink-faint); margin: 6px 0 16px; font-family: "Optima", "Candara", system-ui, sans-serif; line-height: 1.6; }
+      input[type="checkbox"] { margin-right: 6px; accent-color: var(--seal); transform: scale(1.2); }
+    </style>
+  </head>
+  <body>
+    <div class="masthead">
+      <div class="seal-mark">壹</div>
+      <div>
+        <h1>OnePage Reader</h1>
+        <p class="sub">TXT Index Generator</p>
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/files">File Manager</a>
+      <a href="/settings">Settings</a>
+      <a href="/fonts">Fonts</a>
+      <a href="/txt-index" class="active">TXT Index</a>
+    </div>
+
+    <div class="card">
+      <h2><span class="rule"></span>TXT Index Generator</h2>
+      <div class="info" id="settings-info">Loading settings...</div>
+      <button class="btn" onclick="scanBooks()">Scan Books</button>
+      <button class="btn" id="btn-generate" onclick="generateAll()" disabled>Generate Index</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr><th><input type="checkbox" id="check-all" onchange="toggleAll()"></th><th>File</th><th>Size</th><th>Pages</th><th>Status</th></tr></thead>
+        <tbody id="book-list"><tr><td colspan="5" style="text-align:center;color:var(--ink-faint)">Click "Scan Books" to list TXT files</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="progress-section">
+      <div id="progress-text">Generating...</div>
+      <div id="progress-bar-wrap"><div id="progress-fill"></div></div>
+      <div id="log"></div>
+    </div>
+
+<script>
+// === MurmurHash2 32-bit (matches firmware std::hash<std::string>) ===
+function murmur2_32(str) {
+  const bytes = new TextEncoder().encode(str);
+  const m = 0x5bd1e995, r = 24;
+  let h = (0 ^ bytes.length) >>> 0;
+  let i = 0, len = bytes.length;
+  while (len >= 4) {
+    let k = (bytes[i] | bytes[i+1] << 8 | bytes[i+2] << 16 | bytes[i+3] << 24) >>> 0;
+    k = Math.imul(k, m) >>> 0; k ^= k >>> r; k = Math.imul(k, m) >>> 0;
+    h = Math.imul(h, m) >>> 0; h ^= k;
+    i += 4; len -= 4;
+  }
+  if (len >= 3) h ^= bytes[i+2] << 16;
+  if (len >= 2) h ^= bytes[i+1] << 8;
+  if (len >= 1) { h ^= bytes[i]; h = Math.imul(h, m) >>> 0; }
+  h ^= h >>> 13; h = Math.imul(h, m) >>> 0; h ^= h >>> 15;
+  return h >>> 0;
+}
+
+// === Globals ===
+let settings = {};
+let fontAdvances = new Map(); // codepoint → advanceX in pixels
+let viewportWidth = 0, linesPerPage = 0, lineHeight = 20;
+let books = [];
+
+const SCREEN_W = 480, SCREEN_H = 800, STATUS_BAR_H = 28;
+
+// === Load device settings + font metrics ===
+async function loadSettings() {
+  const resp = await fetch('/api/settings');
+  const arr = await resp.json();
+  const map = {}; for (const s of arr) map[s.key] = s.value;
+  settings = map;
+
+  const margin = settings.screenMargin ?? 5;
+  const marginTop = Math.max(margin, STATUS_BAR_H);
+  viewportWidth = SCREEN_W - margin * 2;
+  lineHeight = [16, 20, 24, 28][settings.fontSize ?? 1] || 20;
+  linesPerPage = Math.max(1, Math.floor((SCREEN_H - marginTop - margin) / lineHeight));
+}
+
+async function loadFontAdvances() {
+  const resp = await fetch('/api/fonts/advances');
+  if (!resp.ok) { generateFallbackAdvances(); return; }
+  const buf = await resp.arrayBuffer();
+  const view = new DataView(buf);
+  // Format: uint8 advanceY + uint32 fontId + uint16 numEntries + entries {u32 first, u32 last, u16 adv}
+  lineHeight = view.getUint8(0) || lineHeight;
+  settings.fontId = view.getUint32(1, true);  // firmware's real getReaderFontId() — must match index.bin check
+  const count = view.getUint16(5, true);
+  let off = 7;
+  fontAdvances = new Map();
+  for (let i = 0; i < count; i++) {
+    const first = view.getUint32(off, true);
+    const last = view.getUint32(off + 4, true);
+    const adv = view.getUint16(off + 8, true);
+    if (first === last) { fontAdvances.set(first, adv); }
+    else { for (let cp = first; cp <= last; cp++) fontAdvances.set(cp, adv); }
+    off += 10;
+  }
+  // Recalc linesPerPage from actual font advanceY
+  const margin = settings.screenMargin ?? 5;
+  const marginTop = Math.max(margin, STATUS_BAR_H);
+  linesPerPage = Math.max(1, Math.floor((SCREEN_H - marginTop - margin) / lineHeight));
+}
+
+function generateFallbackAdvances() {
+  fontAdvances = new Map();
+  for (let cp = 32; cp < 127; cp++) fontAdvances.set(cp, 10);
+  for (let cp = 0x4E00; cp <= 0x9FFF; cp++) fontAdvances.set(cp, lineHeight);
+}
+
+// === Scan for TXT files ===
+async function scanBooks() {
+  books = [];
+  await loadSettings();
+  await loadFontAdvances();
+  document.getElementById('settings-info').textContent =
+    `Font size=${settings.fontSize ?? 1}, Margin=${settings.screenMargin ?? 5}, ` +
+    `Viewport=${viewportWidth}px, Lines/page=${linesPerPage}, LineH=${lineHeight}px, ` +
+    `Advances=${fontAdvances.size} entries`;
+  await recursiveScan('/');
+  renderBookList();
+}
+
+async function recursiveScan(dir) {
+  try {
+    const resp = await fetch(`/api/files?path=${encodeURIComponent(dir)}`);
+    if (!resp.ok) return;
+    const items = await resp.json();
+    // /api/files returns {name,size,isDirectory,isEpub} — no path field;
+    // build full paths from the scanned directory ourselves.
+    for (const item of items) {
+      if (!item.name) continue;
+      const full = (dir === '/' ? '' : dir) + '/' + item.name;
+      if (item.isDirectory) { if (!item.name.startsWith('.')) await recursiveScan(full); }
+      else if (item.name.toLowerCase().endsWith('.txt')) {
+        books.push({ path: full, name: item.name, size: item.size || 0, checked: false, status: 'pending', totalPages: 0 });
+      }
+    }
+  } catch (e) { /* skip inaccessible dirs */ }
+}
+
+function renderBookList() {
+  const tbody = document.getElementById('book-list');
+  if (books.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--label-color)">No TXT files found</td></tr>'; return; }
+  tbody.innerHTML = books.map((b, i) => `<tr>
+    <td><input type="checkbox" onchange="books[${i}].checked=this.checked;updateBtn()"></td>
+    <td>${b.name}</td><td>${(b.size/1024/1024).toFixed(1)} MB</td>
+    <td id="pages-${i}">-</td><td class="status" id="status-${i}"><span class="status-pending">Pending</span></td>
+  </tr>`).join('');
+  updateBtn();
+}
+
+function toggleAll() { const c = document.getElementById('check-all').checked; books.forEach(b=>b.checked=c); renderBookList(); }
+function updateBtn() { document.getElementById('btn-generate').disabled = !books.some(b=>b.checked); }
+
+// === Generate indexes ===
+async function generateAll() {
+  const selected = books.filter(b=>b.checked);
+  if (!selected.length) return;
+  document.getElementById('progress-section').style.display = '';
+  document.getElementById('log').innerHTML = '';
+  for (let i = 0; i < selected.length; i++) {
+    const book = selected[i];
+    document.getElementById('progress-fill').style.width = Math.round((i/selected.length)*100)+'%';
+    setProgress(`[${i+1}/${selected.length}] ${book.name}`);
+    try { await generateIndex(book); setBookStatus(book,'ok',`${book.totalPages.toLocaleString()} pages`); log(`✓ ${book.name} → ${book.totalPages.toLocaleString()} pages`); }
+    catch (e) { setBookStatus(book,'err',e.message); log(`✗ ${book.name}: ${e.message}`); }
+  }
+  document.getElementById('progress-fill').style.width = '100%';
+  setProgress('Done!');
+}
+
+async function generateIndex(book) {
+  setBookStatus(book, 'progress', 'Downloading...');
+  const resp = await fetch(`/download?path=${encodeURIComponent(book.path)}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const textBytes = new Uint8Array(await resp.arrayBuffer());
+
+  setBookStatus(book, 'progress', 'Layout...');
+  const pageOffsets = buildPageIndex(textBytes);
+  book.totalPages = pageOffsets.length;
+
+  const indexBin = packIndexBin(pageOffsets, textBytes.length);
+  const hash = murmur2_32(book.path);
+  const cacheDir = `txt_${hash}`;
+  const cachePath = `/.crosspoint/${cacheDir}`;
+
+  setBookStatus(book, 'progress', 'Uploading...');
+  await fetch('/mkdir', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: `name=${encodeURIComponent(cacheDir)}&path=${encodeURIComponent('/.crosspoint')}` });
+  const fd = new FormData();
+  fd.append('file', new Blob([indexBin]), 'index.bin');
+  const ur = await fetch(`/upload?path=${encodeURIComponent(cachePath)}`, { method: 'POST', body: fd });
+  if (!ur.ok) throw new Error(`Upload HTTP ${ur.status}`);
+}
+
+// === Layout simulation ===
+function buildPageIndex(textBytes) {
+  const offsets = [0]; let offset = 0;
+  while (offset < textBytes.length) {
+    const next = layoutOnePage(textBytes, offset);
+    if (next <= offset) break;
+    offset = next;
+    if (offset < textBytes.length) offsets.push(offset);
+  }
+  return offsets;
+}
+
+function layoutOnePage(textBytes, startOffset) {
+  let pos = startOffset, lineCount = 0;
+  const fileSize = textBytes.length;
+  while (pos < fileSize && lineCount < linesPerPage) {
+    let lineEnd = pos;
+    while (lineEnd < fileSize && textBytes[lineEnd] !== 0x0A) lineEnd++;
+    const hasCR = lineEnd > pos && textBytes[lineEnd-1] === 0x0D;
+    const contentLen = hasCR ? lineEnd-pos-1 : lineEnd-pos;
+    let lineStart = pos, consumed = 0;
+    while (consumed < contentLen && lineCount < linesPerPage) {
+      let w = 0, breakAt = consumed;
+      while (breakAt < contentLen) {
+        const cp = decodeCP(textBytes, lineStart+breakAt);
+        const adv = fontAdvances.get(cp.codepoint) || 10;
+        if (w+adv > viewportWidth && breakAt > consumed) break;
+        w += adv; breakAt += cp.bytes;
+      }
+      if (breakAt === consumed) { const cp = decodeCP(textBytes, lineStart+breakAt); breakAt += cp.bytes||1; }
+      lineCount++; consumed = breakAt;
+    }
+    if (consumed >= contentLen) pos = lineEnd+1;
+    else pos = lineStart+consumed;
+  }
+  return pos;
+}
+
+function decodeCP(bytes, off) {
+  const b0=bytes[off];
+  if(b0<0x80) return {codepoint:b0,bytes:1};
+  if((b0&0xE0)===0xC0) return {codepoint:((b0&0x1F)<<6)|(bytes[off+1]&0x3F),bytes:2};
+  if((b0&0xF0)===0xE0) return {codepoint:((b0&0x0F)<<12)|((bytes[off+1]&0x3F)<<6)|(bytes[off+2]&0x3F),bytes:3};
+  if((b0&0xF8)===0xF0) return {codepoint:((b0&0x07)<<18)|((bytes[off+1]&0x3F)<<12)|((bytes[off+2]&0x3F)<<6)|(bytes[off+3]&0x3F),bytes:4};
+  return {codepoint:b0,bytes:1};
+}
+
+function packIndexBin(offsets, fileSize) {
+  const hdrSize = 30, total = hdrSize + offsets.length*4;
+  const buf = new ArrayBuffer(total); const v = new DataView(buf); let p=0;
+  v.setUint32(p,0x54585449,true);p+=4; v.setUint8(p,3);p+=1;
+  v.setUint32(p,fileSize,true);p+=4; v.setUint32(p,viewportWidth,true);p+=4;
+  v.setUint32(p,linesPerPage,true);p+=4; v.setInt32(p,settings.fontId||0,true);p+=4;
+  v.setInt32(p,settings.screenMargin||5,true);p+=4; v.setUint8(p,settings.paragraphAlignment||0);p+=1;
+  v.setUint32(p,offsets.length,true);p+=4;
+  for(const o of offsets){v.setUint32(p,o,true);p+=4;}
+  return new Uint8Array(buf);
+}
+
+// === UI helpers ===
+function setProgress(msg){document.getElementById('progress-text').textContent=msg;}
+function log(msg){const e=document.getElementById('log');e.innerHTML+=msg+'<br>';e.scrollTop=e.scrollHeight;}
+function setBookStatus(book,type,detail){
+  const i=books.indexOf(book); const el=document.getElementById(`status-${i}`);
+  if(!el)return;
+  el.innerHTML=type==='ok'?`<span class="status-ok">✓ ${detail}</span>`:type==='err'?`<span class="status-error">✗ ${detail}</span>`:`<span class="status-pending">⏳ ${detail}</span>`;
+  const pg=document.getElementById(`pages-${i}`); if(pg&&book.totalPages)pg.textContent=book.totalPages.toLocaleString();
+}
+</script>
+  </body>
+</html>

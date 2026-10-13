@@ -1,0 +1,81 @@
+---
+import type { Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+  /** Small monospace kicker above the title (e.g. "Card Studio"). */
+  eyebrow: string;
+  title: string;
+  lede: string;
+  /** Breadcrumb back to the hub. */
+  backLabel: string;
+  backHref: string;
+  /** 'dark' = full-bleed workstation panel; 'light' = matches the rest of the site. */
+  surface?: 'light' | 'dark';
+}
+
+const { lang, eyebrow, title, lede, backLabel, backHref, surface = 'light' } = Astro.props;
+---
+
+<div class="toolshell" data-surface={surface} dir={lang === 'zh' ? 'ltr' : 'ltr'}>
+  <div class="toolshell-head mx-auto max-w-6xl px-6 pt-8 pb-2 sm:pt-10">
+    <a
+      href={backHref}
+      class="toolshell-back inline-flex items-center gap-1.5 font-mono text-xs tracking-wide uppercase no-underline transition"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      {backLabel}
+    </a>
+    <p class="toolshell-eyebrow mt-6 font-mono text-xs tracking-[0.18em] uppercase">{eyebrow}</p>
+    <h1 class="toolshell-title mt-3 font-serif text-3xl font-medium tracking-tight text-balance sm:text-4xl">{title}</h1>
+    <p class="toolshell-lede mt-4 max-w-[70ch] text-base/7 text-pretty">{lede}</p>
+  </div>
+
+  <slot />
+</div>
+
+<style>
+  /* Light surface: inherit the site's paper + ink, just tint the chrome to accent. */
+  .toolshell[data-surface='light'] .toolshell-back {
+    color: color-mix(in oklch, var(--color-ink) 55%, transparent);
+  }
+  .toolshell[data-surface='light'] .toolshell-back:hover {
+    color: var(--color-accent-600);
+  }
+  .toolshell[data-surface='light'] .toolshell-eyebrow {
+    color: var(--color-accent-600);
+  }
+  .toolshell[data-surface='light'] .toolshell-title {
+    color: var(--color-ink);
+  }
+  .toolshell[data-surface='light'] .toolshell-lede {
+    color: color-mix(in oklch, var(--color-ink) 68%, transparent);
+  }
+
+  /* Dark surface: a full-bleed charcoal workbench the tool sits inside. */
+  .toolshell[data-surface='dark'] {
+    background:
+      radial-gradient(120% 80% at 15% -10%, #23252b 0%, #15161a 55%, #101115 100%);
+    color: #f3f2ee;
+  }
+  .toolshell[data-surface='dark'] .toolshell-head {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .toolshell[data-surface='dark'] .toolshell-back {
+    color: rgba(243, 242, 238, 0.55);
+  }
+  .toolshell[data-surface='dark'] .toolshell-back:hover {
+    color: #e4b7ac;
+  }
+  .toolshell[data-surface='dark'] .toolshell-eyebrow {
+    color: #d28d7e;
+  }
+  .toolshell[data-surface='dark'] .toolshell-title {
+    color: #f7f6f2;
+  }
+  .toolshell[data-surface='dark'] .toolshell-lede {
+    color: rgba(243, 242, 238, 0.66);
+  }
+</style>

@@ -1,0 +1,16 @@
+.DS_Store
+.idea
+.vscode
+
+# Enclosure 3D models are published on MakerWorld under the MakerWorld Exclusive
+# License — printable 3D shells stay on MakerWorld.
+*.stl
+*.step
+*.stp
+*.3mf
+*.f3d
+
+# Whitelist: CNC structural mid-frame is maintained directly in this repository
+!mechanical/**/OnePage_MidFrame_CNC_*.stl
+!mechanical/**/OnePage_MidFrame_CNC_*.step
+!mechanical/**/OnePage_MidFrame_CNC_*.stp

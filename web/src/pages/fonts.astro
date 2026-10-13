@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import FontTool from '../components/FontTool.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'en';
+---
+
+<Layout
+  lang={lang}
+  title=".cpfont Builder — OnePage · 壹頁"
+  description="Build CrossPoint-compatible .cpfont files for OnePage from local TTF or OTF fonts. Conversion runs entirely in your browser."
+>
+  <Nav lang={lang} />
+  <main>
+    <FontTool lang={lang} />
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

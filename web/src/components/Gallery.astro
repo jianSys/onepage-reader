@@ -1,0 +1,233 @@
+---
+import type { Lang } from '../i18n/ui';
+import { ui } from '../i18n/ui';
+import { Image } from 'astro:assets';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const g = ui[lang].gallery;
+
+// Optimized (webp + srcset) gallery images from src/assets, matched to the i18n alt text by filename.
+const files = import.meta.glob<{ default: ImageMetadata }>('../assets/gallery/*.{jpg,jpeg,png,webp,JPG,JPEG,PNG,WEBP}', { eager: true });
+const byName: Record<string, ImageMetadata> = {};
+for (const path in files) byName[path.split('/').pop()!] = files[path].default;
+const photos = g.photos
+  .map((p) => ({ alt: p.alt, title: p.title, sub: p.sub, img: byName[p.src.split('/').pop()!] }))
+  .filter((p) => p.img);
+---
+
+<section id="gallery" aria-labelledby="gallery-heading" class="scroll-mt-20 overflow-hidden border-t border-ink/12 py-20 sm:py-24">
+  <div class="mx-auto max-w-5xl px-6">
+    <p class="font-mono text-xs tracking-wider text-accent-600 uppercase" data-reveal>{g.eyebrow}</p>
+    <h2 id="gallery-heading" class="mt-3 max-w-[24ch] font-serif text-3xl font-medium tracking-tight text-balance text-ink" data-reveal style="--reveal-delay:80ms">{g.title}</h2>
+  </div>
+
+  <!-- Coverflow: the centered card is sharp; queued cards dim, blur, and shrink.
+       Center padding = half the card width per breakpoint, so the active card sits centered. -->
+  <div
+    id="gallery-track"
+    role="region"
+    aria-label={g.title}
+    class="mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[calc(50%-8rem)] pb-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:mt-12 sm:gap-6 sm:px-[calc(50%-10rem)] lg:px-[calc(50%-12rem)] [&::-webkit-scrollbar]:hidden"
+  >
+    {photos.map((p, i) => (
+      <figure class="gcard relative shrink-0 snap-center">
+        <Image
+          src={p.img}
+          alt={p.alt}
+          widths={[384, 576, 768]}
+          sizes="(min-width: 1024px) 384px, (min-width: 640px) 320px, 256px"
+          format="webp"
+          quality={72}
+          loading="lazy"
+          class="aspect-[3/4] w-64 rounded-xl object-cover shadow-md ring-1 ring-ink/10 sm:w-80 lg:w-96"
+        />
+        {/* Text overlay — follows the site language; replaces the burnt-in poster text once
+            the plain (text-free) renders are swapped in. The gradient scrim keeps the white
+            text legible over any artwork, light or dark. */}
+        <figcaption class="pointer-events-none absolute inset-x-0 top-0 rounded-t-xl bg-gradient-to-b from-black/50 via-black/20 to-transparent p-5 sm:p-6">
+          <p class="font-mono text-[11px] tracking-wider text-white/70">{String(i + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}</p>
+          <h3 class="mt-1.5 font-serif text-2xl font-medium tracking-tight text-white [text-shadow:0_1px_3px_rgb(0_0_0/0.4)] sm:text-3xl">{p.title}</h3>
+          <p class="mt-1 text-sm/6 text-white/80 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]">{p.sub}</p>
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <!-- Carousel status: floats at the bottom of the viewport while the gallery is on screen -->
+  <div class="gallery-dots flex items-center gap-3">
+    {photos.map((_, i) => (
+      <button type="button" class="gallery-dot" data-i={i} aria-label={`${g.dotLabel} ${i + 1}`}>
+        <span class="gallery-dot-fill"></span>
+      </button>
+    ))}
+  </div>
+</section>
+
+<style>
+  /* Cards: only the centered one is sharp; the rest recede. */
+  .gcard {
+    opacity: 0.4;
+    filter: blur(1.5px);
+    transform: scale(0.88);
+    transition: opacity 0.5s ease, filter 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .gcard.is-active {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gcard { transition: none; }
+  }
+
+  /* Status dots: active one fills over the dwell time. */
+  /* Status dots: float at the bottom of the viewport while the gallery is on screen. */
+  .gallery-dots {
+    position: fixed;
+    left: 50%;
+    bottom: 1.25rem;
+    z-index: 40;
+    transform: translateX(-50%) translateY(0.5rem);
+    opacity: 0;
+    pointer-events: none;
+    padding: 0.7rem 1.1rem;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--color-paper) 80%, transparent);
+    box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .gallery-dots.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  .gallery-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    background: color-mix(in oklch, var(--color-ink) 18%, transparent);
+    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .gallery-dot.is-active {
+    width: 56px;
+  }
+  .gallery-dot-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--color-ink) 62%, transparent);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .gallery-dot.is-active .gallery-dot-fill {
+      animation: gallery-fill 3.8s linear forwards;
+    }
+    .gallery-dots.paused .gallery-dot.is-active .gallery-dot-fill {
+      animation-play-state: paused;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gallery-dot.is-active .gallery-dot-fill { width: 100%; }
+  }
+  @keyframes gallery-fill {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var section = document.getElementById('gallery');
+    var track = document.getElementById('gallery-track');
+    var dotsWrap = section && section.querySelector('.gallery-dots');
+    if (!section || !track || !dotsWrap) return;
+    var cards = Array.prototype.slice.call(track.children);
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+    var n = cards.length;
+    if (n < 2) return;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var stride = cards[1].offsetLeft - cards[0].offsetLeft || cards[0].getBoundingClientRect().width;
+    var current = -1;
+    var watchdog = null;
+
+    function armWatchdog() {
+      clearTimeout(watchdog);
+      if (reduce) return;
+      watchdog = setTimeout(function () {
+        if (dotsWrap.classList.contains('paused')) { armWatchdog(); return; }
+        goTo(current + 1, true);
+      }, 4700);
+    }
+    function setActive(i) {
+      current = i;
+      for (var c = 0; c < cards.length; c++) cards[c].classList.toggle('is-active', c === i);
+      for (var d = 0; d < dots.length; d++) dots[d].classList.toggle('is-active', d === i);
+      var fill = dots[i].firstElementChild; // restart the fill animation reliably
+      if (fill) { fill.style.animation = 'none'; void fill.offsetWidth; fill.style.animation = ''; }
+      armWatchdog();
+    }
+    function goTo(i, smooth) {
+      i = ((i % n) + n) % n;
+      track.scrollTo({ left: i * stride, behavior: smooth && !reduce ? 'smooth' : 'auto' });
+      setActive(i);
+    }
+
+    dotsWrap.addEventListener('animationend', function (e) {
+      if (reduce || !e.target.classList.contains('gallery-dot-fill')) return;
+      if (!e.target.parentElement.classList.contains('is-active')) return;
+      goTo(current + 1, true);
+    });
+
+    // Sync the centered card ONLY from user-initiated scrolling; ignore programmatic scrolls.
+    var userScrolling = false, settle = null;
+    ['pointerdown', 'touchstart', 'wheel'].forEach(function (ev) {
+      track.addEventListener(ev, function () { userScrolling = true; }, { passive: true });
+    });
+    track.addEventListener('scroll', function () {
+      if (!userScrolling) return;
+      clearTimeout(settle);
+      settle = setTimeout(function () {
+        userScrolling = false;
+        setActive(Math.max(0, Math.min(n - 1, Math.round(track.scrollLeft / stride))));
+      }, 130);
+    }, { passive: true });
+
+    dots.forEach(function (dot, i) {
+      dot.addEventListener('click', function () { goTo(i, true); });
+    });
+
+    var hovering = false, focused = false, inView = false, wasPaused = true;
+    function apply() {
+      var paused = !inView || hovering || focused || document.hidden;
+      dotsWrap.classList.toggle('is-visible', inView);
+      dotsWrap.classList.toggle('paused', paused);
+      if (wasPaused && !paused) armWatchdog();
+      wasPaused = paused;
+    }
+    // Pause on hover of the dots — images keep auto-advancing.
+    dotsWrap.addEventListener('pointerenter', function () { hovering = true; apply(); });
+    dotsWrap.addEventListener('pointerleave', function () { hovering = false; apply(); });
+    // Pause while keyboard focus is anywhere in the gallery (WCAG 2.2.2 — user can stop it).
+    section.addEventListener('focusin', function () { focused = true; apply(); });
+    section.addEventListener('focusout', function (e) {
+      if (!section.contains(e.relatedTarget)) { focused = false; apply(); }
+    });
+    document.addEventListener('visibilitychange', apply);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) { inView = entries[0].isIntersecting; apply(); }, { threshold: 0.2 }).observe(section);
+    } else {
+      inView = true;
+    }
+
+    setActive(0);
+    apply();
+  })();
+</script>

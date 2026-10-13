@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolShell from '../components/ToolShell.astro';
+import CardStudio from '../components/CardStudio.astro';
+import Footer from '../components/Footer.astro';
+import { ui, localizedPath } from '../i18n/ui';
+
+const lang = 'en';
+const c = ui[lang].cards;
+const backLabel = ui[lang].tools.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="Card Studio — OnePage · 壹頁"
+  description="Design 480×800 e-ink cards (quote, weather, status, to-do) for OnePage's AirPage. Dithered to true black-and-white in your browser, then downloaded as a ready-to-use BMP or pushed over Wi-Fi."
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={c.eyebrow}
+      title={c.title}
+      lede={c.lede}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <CardStudio lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

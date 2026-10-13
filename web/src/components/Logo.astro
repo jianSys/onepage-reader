@@ -1,0 +1,34 @@
+---
+/**
+ * OnePage · 壹頁 mark — the document mascot (a folded page with a little face).
+ * Matches public/favicon.svg, but uses currentColor so it adapts to light/dark contexts.
+ */
+interface Props {
+  class?: string;
+}
+const { class: cls = 'h-7 w-auto' } = Astro.props;
+---
+
+<svg
+  viewBox="0 0 180 253"
+  width="20"
+  height="28"
+  fill="none"
+  class:list={['shrink-0 text-ink', cls]}
+  role="img"
+  aria-label="OnePage 壹頁"
+>
+  <g stroke="currentColor" fill="currentColor" stroke-width="4.7" stroke-linejoin="round" stroke-linecap="round">
+    <!-- document outline: rounded TL/BR/BL corners; top-right cut by the fold crease -->
+    <path
+      fill="none"
+      d="M 12 27.6 A 15.6 15.6 0 0 1 27.6 12 L 110.28 12 L 168 71.54 L 168 225.4 A 15.6 15.6 0 0 1 152.4 241 L 27.6 241 A 15.6 15.6 0 0 1 12 225.4 Z"
+    />
+    <!-- folded-over flap -->
+    <polygon stroke="none" points="110.28,12 168,71.54 144.6,69.25 111.06,39.48" />
+    <!-- eyes + mouth -->
+    <circle stroke="none" cx="65.04" cy="115.05" r="9.05" />
+    <circle stroke="none" cx="114.96" cy="115.05" r="9.05" />
+    <rect stroke="none" x="71.28" y="150.09" width="37.44" height="10.08" rx="5.04" />
+  </g>
+</svg>

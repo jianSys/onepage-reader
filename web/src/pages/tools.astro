@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolHub from '../components/ToolHub.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'en';
+---
+
+<Layout
+  lang={lang}
+  title="Tools — OnePage · 壹頁"
+  description="Private browser tools for your OnePage e-reader: card studio for e-ink cards, font converter, and more. Everything runs locally — nothing is uploaded."
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolHub lang={lang} />
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

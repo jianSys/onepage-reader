@@ -1,0 +1,75 @@
+---
+import type { Lang } from '../i18n/ui';
+import { ui, localizedPath } from '../i18n/ui';
+import { tools } from '../tools/registry';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = ui[lang].tools;
+---
+
+<section class="py-12 sm:py-16">
+  <div class="mx-auto max-w-6xl px-6">
+    <p class="font-mono text-xs tracking-[0.18em] text-accent-600 uppercase">{t.eyebrow}</p>
+    <h1 class="mt-3 font-serif text-3xl font-medium tracking-tight text-balance text-ink sm:text-4xl">{t.title}</h1>
+    <p class="mt-4 max-w-[70ch] text-base/7 text-pretty text-ink/70">{t.lede}</p>
+
+    <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        tools.map((tool) => {
+          const meta = t.items[tool.id];
+          const href = localizedPath(tool.path, lang);
+          const ready = tool.status === 'ready';
+          const Wrapper = ready ? 'a' : 'div';
+          return (
+            <Wrapper
+              href={ready ? href : undefined}
+              class={`group relative flex flex-col rounded-xl border p-5 no-underline transition ${
+                ready
+                  ? 'border-ink/15 bg-surface text-ink shadow-sm hover:-translate-y-0.5 hover:border-accent-500/60 hover:shadow-md'
+                  : 'border-dashed border-ink/15 bg-transparent text-ink/45'
+              }`}
+            >
+              <span
+                class={`absolute right-4 top-4 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+                  ready ? 'bg-accent-600/10 text-accent-700' : 'bg-ink/5 text-ink/45'
+                }`}
+              >
+                {ready ? t.readyLabel : t.soonLabel}
+              </span>
+
+              <svg
+                class="h-8 w-8 text-accent-600 group-hover:text-accent-700"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d={tool.icon} />
+              </svg>
+
+              <h2 class="mt-4 font-serif text-xl font-medium text-balance">{meta.name}</h2>
+              <p class="mt-1.5 text-sm/6 text-pretty opacity-80">{meta.tagline}</p>
+
+              {
+                ready && (
+                  <span class="mt-4 inline-flex items-center gap-1.5 font-mono text-xs font-medium text-accent-700">
+                    {t.openLabel}
+                    <svg class="h-3.5 w-3.5 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                )
+              }
+            </Wrapper>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>
