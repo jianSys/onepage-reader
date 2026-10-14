@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Nav from '../../components/Nav.astro';
+import ToolShell from '../../components/ToolShell.astro';
+import TxtTool from '../../components/TxtTool.astro';
+import Footer from '../../components/Footer.astro';
+import { ui, localizedPath } from '../../i18n/ui';
+
+const lang = 'zh';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="TXT 整理 — 壹頁 · OnePage"
+  description="修复编码（GBK / Big5 乱码 → UTF-8）、去除广告与水印行、规整空行、识别章节并查看统计 —— 全部在你的浏览器里完成。导出干净的 UTF-8 TXT 放进 SD 卡或通过 Wi-Fi 推送。"
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.txt.name}
+      title={t.items.txt.name}
+      lede={t.items.txt.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <TxtTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

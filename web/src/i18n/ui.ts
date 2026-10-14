@@ -94,7 +94,7 @@ type CardsContent = {
   templatesTitle: string;
   allLabel: string;
   categories: Record<
-    'time' | 'count' | 'text' | 'list' | 'data' | 'photo' | 'office' | 'plan' | 'ink' | 'poster' | 'astro',
+    'time' | 'count' | 'text' | 'list' | 'data' | 'photo' | 'office' | 'travel' | 'transit' | 'plan' | 'ink' | 'nature' | 'art' | 'poster' | 'music' | 'astro' | 'divination' | 'puzzle',
     string
   >;
   templates: Record<string, { name: string; hint: string }>;
@@ -108,15 +108,32 @@ type CardsContent = {
   photoHint: string;
   fetchBtn: string;
   fitLabel: string;
+  fontLabel: string;
   ditherLabel: string;
   ditherHint: string;
+  adv: {
+    title: string;
+    dither: string;
+    ditherFS: string;
+    ditherBayer: string;
+    ditherNone: string;
+    brightness: string;
+    contrast: string;
+    reset: string;
+    hint: string;
+  };
   downloadBtn: string;
   pushBtn: string;
   deviceUrlLabel: string;
+  probeBtn: string;
+  deviceChecking: string;
+  deviceOnline: string;
+  deviceOffline: string;
   // Export format switch
   formatLabel: string;
   bmpHint: string;
   pngHint: string;
+  grayHint: string;
   // Live status line
   ready: string;
   rendering: string;
@@ -125,6 +142,29 @@ type CardsContent = {
   pushed: string;
   pushFailed: string;
   offlineNote: string;
+  // Works library (multi-card, stored in the browser)
+  library: {
+    title: string;
+    lede: string;
+    saveBtn: string;
+    savedStatus: string;
+    empty: string;
+    load: string;
+    pushOne: string;
+    duplicate: string;
+    rename: string;
+    renamePrompt: string;
+    remove: string;
+    deleteConfirm: string;
+    pin: string;
+    unpin: string;
+    pinnedTag: string;
+    importBtn: string;
+    exportBtn: string;
+    importFail: string;
+    quotaFull: string;
+    copySuffix: string;
+  };
   footNote: string;
 };
 
@@ -136,7 +176,7 @@ type ToolsContent = {
   soonLabel: string;
   openLabel: string;
   backLabel: string;
-  items: Record<'cards' | 'fonts' | 'images', { name: string; tagline: string }>;
+  items: Record<'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub', { name: string; tagline: string }>;
 };
 
 type Content = {
@@ -481,10 +521,10 @@ export const ui: Record<Lang, Content> = {
     cards: {
       eyebrow: 'Card Studio',
       title: 'Design e-ink cards for AirPage.',
-      lede: 'Pick from 38 ready layouts — photo, clock, weather, badges, ink-wash, posters, lists and more — dithered to the reader’s 480×800 black-and-white panel exactly as the device would, then download it or push it to OnePage over USB-less Wi-Fi.',
+      lede: 'Pick from 51 ready layouts — photo, clock, weather, badges, boarding passes, QR codes, ink-wash, posters, lists, stamps, maps, mazes and more — dithered to the reader’s 480×800 black-and-white panel exactly as the device would, then download it or push it to OnePage over USB-less Wi-Fi.',
       templatesTitle: 'Template',
       allLabel: 'All',
-      categories: { time: 'Time', count: 'Counting', text: 'Words', list: 'Lists', data: 'Data', photo: 'Photo', office: 'Office', plan: 'Plan', ink: 'Ink', poster: 'Poster', astro: 'Sky' },
+      categories: { time: 'Time', count: 'Counting', text: 'Words', list: 'Lists', data: 'Data', photo: 'Photo', office: 'Office', travel: 'Travel', transit: 'Transit', plan: 'Plan', ink: 'Ink', nature: 'Nature', art: 'Art', poster: 'Poster', music: 'Music', astro: 'Sky', divination: 'Fortune', puzzle: 'Puzzle' },
       templates: {
         quote: { name: 'Quote', hint: 'One calm line of text. “Fetch” pulls a live hitokoto.' },
         poem: { name: 'Poem', hint: 'Verses in the main box (one per line); title · author in the subtitle.' },
@@ -500,6 +540,7 @@ export const ui: Record<Lang, Content> = {
         weather: { name: 'Weather', hint: 'Place in the subtitle, then “Fetch” for live temperature + forecast.' },
         status: { name: 'Status', hint: 'A big number; caption above; “key : value” rows one per line.' },
         reading: { name: 'Now reading', hint: 'Book title + author; “Progress : 62%” and page rows one per line.' },
+        shelf: { name: 'Bookshelf', hint: 'A row of standing spines — one book per line; black/white alternation stays crisp in 1-bit.' },
         moon: { name: 'Moon phase', hint: 'Today’s lunar phase, drawn from the date; optional label.' },
         greet: { name: 'Greeting', hint: 'Time-of-day greeting that changes live; override the text if you like.' },
         week: { name: 'This week', hint: 'The ISO week number with a year-progress bar underneath.' },
@@ -524,6 +565,19 @@ export const ui: Record<Lang, Content> = {
         weekplan: { name: 'This week', hint: 'A weekly schedule; “Day · time · plan” one per line.' },
         social: { name: 'Social battery', hint: 'A segmented battery; the percentage in the subtitle.' },
         badge: { name: 'ID badge', hint: 'Name in the main box; role in the subtitle; employee ID on the first line.' },
+        boarding: { name: 'Boarding pass', hint: 'From / to codes, passenger, airline (pick or custom), flight, gate, seat and date.' },
+        hsr: { name: 'High-speed rail', hint: 'China-railway ticket: from / to stations, train, date, gate, seat and fare.' },
+        subway: { name: 'Subway sign', hint: 'Metro station plate: this / previous / next station and the direction.' },
+        vinyl: { name: 'Vinyl record', hint: 'A record label card: track, artist, album, side A/B and imprint.' },
+        stamp: { name: 'Postage stamp', hint: 'A perforated stamp: country, denomination, subject and year over a line-art scene.' },
+        herbarium: { name: 'Herbarium', hint: 'A pressed specimen sheet: name, latin species, place and date on the label.' },
+        contour: { name: 'Contour atlas', hint: 'A topographic map generated from the region name, with a peak marker and scale.' },
+        museum: { name: 'Museum wall', hint: 'A gallery wall: exhibition title, museum, run dates and featured works.' },
+        pixelnight: { name: 'Pixel night', hint: 'A blocky night skyline with a crescent moon, stars and a city caption.' },
+        plum: { name: 'Ink plum', hint: 'Ink-wash plum branch with a vertical poem, author and a seal.' },
+        fortune: { name: 'Daily fortune', hint: 'An omikuji-style draw: fortune level, keyword, date and advice.' },
+        maze: { name: 'Maze', hint: 'A generated maze from a seed; pick a size and optionally reveal the solution.' },
+        qrcode: { name: 'QR code', hint: 'Encode a link or any text into a scannable QR, printed crisp at 1-bit.' },
       },
       editorTitle: 'Content',
       contentLabel: 'Main text',
@@ -534,14 +588,31 @@ export const ui: Record<Lang, Content> = {
       photoHint: 'Stays on your device — nothing is uploaded.',
       fetchBtn: 'Fetch live data',
       fitLabel: 'Auto-fit text',
+      fontLabel: 'Typeface',
       ditherLabel: 'E-ink preview (1-bit dither)',
       ditherHint: 'Toggle to see the true black-and-white result the panel shows.',
+      adv: {
+        title: 'Advanced',
+        dither: 'Dither',
+        ditherFS: 'Floyd–Steinberg',
+        ditherBayer: 'Ordered (Bayer)',
+        ditherNone: 'None (threshold)',
+        brightness: 'Brightness',
+        contrast: 'Contrast',
+        reset: 'Reset',
+        hint: 'Fine-tune the 1-bit conversion — most useful for photos and grayscale art.',
+      },
       downloadBtn: 'Download',
       pushBtn: 'Push to device',
       deviceUrlLabel: 'Device address',
+      probeBtn: 'Check',
+      deviceChecking: 'Checking…',
+      deviceOnline: '● Device online',
+      deviceOffline: '○ Device offline — verify the address, or download and import manually',
       formatLabel: 'Format',
       bmpHint: '1-bit BMP — drop it on the SD card or push it, the device shows it as-is.',
       pngHint: 'PNG — for sharing; the device converts it on open.',
+      grayHint: 'BMP · 4-level gray — richer gradients; the device shows it via its 4-gray path.',
       ready: 'Ready.',
       rendering: 'Rendering…',
       fetched: 'Live data loaded.',
@@ -549,6 +620,28 @@ export const ui: Record<Lang, Content> = {
       pushed: 'Pushed to the device.',
       pushFailed: 'Push failed — check the device address, or download and import instead.',
       offlineNote: 'The device runs its own hotspot; your phone can still use mobile data to fetch. If both are offline, edit manually.',
+      library: {
+        title: 'My works',
+        lede: 'Saved cards live in your browser only. Open one to keep editing, or push and download it directly.',
+        saveBtn: 'Save to library',
+        savedStatus: 'Saved to your library.',
+        empty: 'No saved works yet — design a card above, then tap “Save to library”.',
+        load: 'Open',
+        pushOne: 'Push',
+        duplicate: 'Duplicate',
+        rename: 'Rename',
+        renamePrompt: 'Card name',
+        remove: 'Delete',
+        deleteConfirm: 'Delete this card?',
+        pin: 'Pin',
+        unpin: 'Unpin',
+        pinnedTag: 'Pinned',
+        importBtn: 'Import',
+        exportBtn: 'Export',
+        importFail: 'Could not read that file — is it a card-library JSON?',
+        quotaFull: 'Browser storage is full — export and delete some works first.',
+        copySuffix: 'copy',
+      },
       footNote: 'Card layouts are inspired by the CrossMux AirPage community project (MIT).',
     },
     tools: {
@@ -563,6 +656,9 @@ export const ui: Record<Lang, Content> = {
         cards: { name: 'Card Studio', tagline: 'Design 480×800 e-ink cards, export ready-to-use BMP.' },
         fonts: { name: 'Font Tool', tagline: 'Convert TTF / OTF into CrossPoint .cpfont, offline.' },
         images: { name: 'Image → BMP', tagline: 'Turn any photo into a dithered e-ink bitmap.' },
+        wallpaper: { name: 'Wallpaper Maker', tagline: 'Build 480×800 lock-screen wallpapers with a clock or quote overlay.' },
+        txt: { name: 'TXT Tidier', tagline: 'Fix encoding, strip ads, split chapters — all in your browser.' },
+        epub: { name: 'Book Info & Cover', tagline: 'Read EPUB / TXT metadata and export a cover BMP.' },
       },
     },
   },
@@ -840,10 +936,10 @@ export const ui: Record<Lang, Content> = {
     cards: {
       eyebrow: '卡片工坊',
       title: '为 AirPage 设计墨水屏卡片。',
-      lede: '从 38 种现成模板中挑选——照片、时钟、天气、工牌、水墨、海报、清单等，按阅读器的 480×800 黑白屏抖动成设备真实显示的效果，然后下载图片或通过 Wi-Fi 推到 OnePage。',
+      lede: '从 51 种现成模板中挑选——照片、时钟、天气、工牌、登机牌、二维码、水墨、 海报、清单、邮票、地图、迷宫等，按阅读器的 480×800 黑白屏抖动成设备真实显示的效 果，然后下载图片或通过 Wi-Fi 推到 OnePage。',
       templatesTitle: '模板',
       allLabel: '全部',
-      categories: { time: '时间', count: '倒数与进度', text: '文字', list: '清单', data: '数据', photo: '照片', office: '办公', plan: '计划', ink: '水墨', poster: '海报', astro: '天文' },
+      categories: { time: '时间', count: '倒数与进度', text: '文字', list: '清单', data: '数据', photo: '照片', office: '办公', travel: '出行', transit: '导视', plan: '计划', ink: '水墨', nature: '自然', art: '艺术', poster: '海报', music: '音乐', astro: '天文', divination: '占卜', puzzle: '解谜' },
       templates: {
         quote: { name: '一言', hint: '一行安静的文字；点“拉取”随机取一句。' },
         poem: { name: '古诗词', hint: '诗句放主文字（每行一句）；标题·作者在副标题。' },
@@ -859,6 +955,7 @@ export const ui: Record<Lang, Content> = {
         weather: { name: '天气', hint: '副标题填城市，点“拉取”取实时温度与预报。' },
         status: { name: '状态', hint: '一个大数字；上方标题；“名称 : 值”每行一条。' },
         reading: { name: '在读', hint: '书名 + 作者；“进度 : 62%”与页数每行一条。' },
+        shelf: { name: '书架', hint: '一排立着的书脊，每行一本；黑白交替，1-bit 上最清晰。' },
         moon: { name: '月相', hint: '根据日期画出今天的月相；可选标签。' },
         greet: { name: '问候', hint: '随时段变化的问候（预览里实时更新）；也可自己填文字。' },
         week: { name: '本周', hint: '本周是第几周（ISO 周数），下方带今年进度条。' },
@@ -883,6 +980,19 @@ export const ui: Record<Lang, Content> = {
         weekplan: { name: '本周计划', hint: '一周日程；“星期 · 时间 · 安排”每行一条。' },
         social: { name: '社交电量', hint: '分格电量条；百分比放副标题。' },
         badge: { name: '员工工牌', hint: '姓名放主文字；职位放副标题；工号放第一行。' },
+        boarding: { name: '登机牌', hint: '出发/到达代码、乘客、航空公司（可选或自定义）、航班、登机口、座位与日期。' },
+        hsr: { name: '高铁票', hint: '中国铁路车票：出发/到达站、车次、日期、检票口、席位与票价。' },
+        subway: { name: '地铁站牌', hint: '地铁站名牌：本站/上一站/下一站与开行方向。' },
+        vinyl: { name: '黑胶唱片', hint: '唱片标签卡：曲目、艺人、专辑、A/B 面与厂牌。' },
+        stamp: { name: '邮票', hint: '带齿孔的邮票：国家、面值、主题与年份，配一幅线描图案。' },
+        herbarium: { name: '植物标本', hint: '压制标本页：名称、拉丁学名、采集地与日期写在标签上。' },
+        contour: { name: '等高线秘境', hint: '根据区域名生成的地形等高地图，带主峰标记与比例尺。' },
+        museum: { name: '美术馆之墙', hint: '展厅墙：展览标题、美术馆、展期与展出作品。' },
+        pixelnight: { name: '像素夜景', hint: '方块风城市夜景，带新月、星空与城市标题。' },
+        plum: { name: '墨梅', hint: '水墨梅枝，配竖排题画诗、题款与一方印章。' },
+        fortune: { name: '今日运势', hint: '求签风：运势等级、签文关键词、日期与建议。' },
+        maze: { name: '迷宫', hint: '由种子生成的迷宫；选难度，可勾选显示解答。' },
+        qrcode: { name: '二维码', hint: '把链接或任意文本编成可扫描的二维码，1-bit 高清直出。' },
       },
       editorTitle: '内容',
       contentLabel: '主文字',
@@ -893,14 +1003,31 @@ export const ui: Record<Lang, Content> = {
       photoHint: '只存在你本地 — 不会上传。',
       fetchBtn: '拉取实时数据',
       fitLabel: '自动适配字号',
+      fontLabel: '字体',
       ditherLabel: '墨水屏预览（1-bit 抖动）',
       ditherHint: '切换查看屏幕真正显示的黑白效果。',
+      adv: {
+        title: '高级',
+        dither: '抖动',
+        ditherFS: 'Floyd–Steinberg 误差扩散',
+        ditherBayer: '有序抖动 (Bayer)',
+        ditherNone: '无（直接阈值）',
+        brightness: '亮度',
+        contrast: '对比度',
+        reset: '重置',
+        hint: '微调 1-bit 转换——对照片和灰度作品最有用的调节。',
+      },
       downloadBtn: '下载',
       pushBtn: '推送到设备',
       deviceUrlLabel: '设备地址',
+      probeBtn: '检测',
+      deviceChecking: '检测中…',
+      deviceOnline: '● 设备在线',
+      deviceOffline: '○ 设备离线——请核对地址，或先下载再手动导入',
       formatLabel: '格式',
       bmpHint: '1-bit BMP —— 放进 SD 卡或直接推送，设备无需转换即可显示。',
       pngHint: 'PNG —— 便于分享；设备打开时再转换。',
+      grayHint: 'BMP · 4 级灰阶 —— 渐变更丰富；设备走四灰显示。',
       ready: '就绪。',
       rendering: '渲染中……',
       fetched: '实时数据已加载。',
@@ -908,6 +1035,28 @@ export const ui: Record<Lang, Content> = {
       pushed: '已推送到设备。',
       pushFailed: '推送失败 —— 检查设备地址，或改为下载后导入。',
       offlineNote: '设备开自己的热点；手机仍可用移动数据拉取。若都离线，请手动编辑。',
+      library: {
+        title: '我的作品',
+        lede: '保存的卡片只存在你的浏览器里。点开可继续编辑，或直接推送 / 下载。',
+        saveBtn: '保存到作品库',
+        savedStatus: '已保存到作品库。',
+        empty: '还没有作品——先在上方设计一张卡片，再点「保存到作品库」。',
+        load: '打开',
+        pushOne: '推送',
+        duplicate: '复制',
+        rename: '重命名',
+        renamePrompt: '卡片名称',
+        remove: '删除',
+        deleteConfirm: '要删除这张卡片吗？',
+        pin: '置顶',
+        unpin: '取消置顶',
+        pinnedTag: '已置顶',
+        importBtn: '导入',
+        exportBtn: '导出',
+        importFail: '无法读取该文件——它不是卡片作品的 JSON 吗？',
+        quotaFull: '浏览器存储空间已满——请先导出并删除部分作品。',
+        copySuffix: '副本',
+      },
       footNote: '卡片布局灵感来自 CrossMux AirPage 社区项目（MIT）。',
     },
     tools: {
@@ -922,6 +1071,9 @@ export const ui: Record<Lang, Content> = {
         cards: { name: '卡片工坊', tagline: '设计 480×800 墨水屏卡片，导出即用的 BMP。' },
         fonts: { name: '字体工具', tagline: '本地把 TTF / OTF 转成 CrossPoint .cpfont，不上传。' },
         images: { name: '图片转 BMP', tagline: '把任意照片变成抖动后的墨水屏位图。' },
+        wallpaper: { name: '壁纸制作器', tagline: '做 480×800 锁屏壁纸，叠加大时钟或引言。' },
+        txt: { name: 'TXT 整理', tagline: '修编码、去广告、分章节 —— 全在浏览器里完成。' },
+        epub: { name: '书籍信息与封面', tagline: '读取 EPUB / TXT 元数据并导出封面 BMP。' },
       },
     },
   },

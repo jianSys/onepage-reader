@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolShell from '../components/ToolShell.astro';
+import WallpaperTool from '../components/WallpaperTool.astro';
+import Footer from '../components/Footer.astro';
+import { ui, localizedPath } from '../i18n/ui';
+
+const lang = 'en';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="Wallpaper Maker — OnePage · 壹頁"
+  description="Build 480×800 e-ink lock-screen wallpapers with a live clock or quote overlay — 1-bit dithered or 4-level grayscale — ready to drop on the SD card or push over Wi-Fi. Runs entirely in your browser."
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.wallpaper.name}
+      title={t.items.wallpaper.name}
+      lede={t.items.wallpaper.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <WallpaperTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

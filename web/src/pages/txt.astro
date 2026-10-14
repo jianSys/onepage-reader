@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolShell from '../components/ToolShell.astro';
+import TxtTool from '../components/TxtTool.astro';
+import Footer from '../components/Footer.astro';
+import { ui, localizedPath } from '../i18n/ui';
+
+const lang = 'en';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="TXT Tidier — OnePage · 壹頁"
+  description="Fix encoding (GBK / Big5 mojibake → UTF-8), strip ad and watermark lines, tidy blank lines, detect chapters and view stats — entirely in your browser. Export a clean UTF-8 TXT to the SD card or push over Wi-Fi."
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.txt.name}
+      title={t.items.txt.name}
+      lede={t.items.txt.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <TxtTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

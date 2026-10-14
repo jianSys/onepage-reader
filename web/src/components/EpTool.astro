@@ -1,0 +1,393 @@
+---
+import type { Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+
+const strings = {
+  pickEpub: zh ? '选择或拖入 EPUB / TXT 文件' : 'Choose or drop an EPUB / TXT file',
+  parsing: zh ? '正在解析…' : 'Parsing…',
+  ready: zh ? '就绪。' : 'Ready.',
+  noCover: zh ? '未找到封面图。' : 'No cover image found.',
+  pushed: zh ? '已推送到设备。' : 'Pushed to device.',
+  pushFailed: zh ? '推送失败，请检查设备地址与网络。' : 'Push failed — check the device address and network.',
+  deviceChecking: zh ? '检测中…' : 'Checking…',
+  deviceOnline: zh ? '设备在线。' : 'Device online.',
+  deviceOffline: zh ? '设备离线或未填写地址。' : 'Device offline or address missing.',
+  specGray: '480 × 800 · 4级灰阶',
+  specBmp: '480 × 800 · 1-bit',
+  specPng: '480 × 800 · PNG',
+  dlBmp: zh ? '下载 BMP' : 'Download BMP',
+  dlPng: zh ? '下载 PNG' : 'Download PNG',
+  notFound: zh ? '（无）' : '(none)',
+  txtNote: zh ? '这是纯文本文件，仅读取基本信息，无元数据或封面。' : 'Plain text file — only basic info is available; no embedded metadata or cover.',
+};
+
+const L = {
+  metaTitle: zh ? '书籍信息' : 'Book info',
+  fldTitle: zh ? '书名' : 'Title',
+  fldAuthor: zh ? '作者' : 'Author',
+  fldLang: zh ? '语言' : 'Language',
+  fldPublisher: zh ? '出版社' : 'Publisher',
+  fldDate: zh ? '日期' : 'Date',
+  fldId: zh ? '标识符' : 'Identifier',
+  fldDesc: zh ? '简介' : 'Description',
+  fldChapters: zh ? '章节数' : 'Chapters',
+  fldFiles: zh ? '清单条目' : 'Manifest items',
+  coverTitle: zh ? '封面 → BMP' : 'Cover → BMP',
+  frameLabel: zh ? '构图' : 'Framing',
+  frameContain: zh ? '完整显示（留白）' : 'Fit (letterbox)',
+  frameFill: zh ? '铺满裁切' : 'Fill (crop)',
+  brightness: zh ? '亮度' : 'Brightness',
+  contrast: zh ? '对比度' : 'Contrast',
+  formatTitle: zh ? '导出格式' : 'Export format',
+  reset: zh ? '重置' : 'Reset',
+  bmpHint: zh ? '黑白位图，任意固件可显示。' : 'True black-and-white; shows on any firmware.',
+  grayHint: zh ? '四档灰，封面更自然（需固件四灰管线）。' : 'Four grays — covers look natural (needs the 4-gray firmware path).',
+  pngHint: zh ? '完整灰度 PNG，供电脑查看。' : 'Full grayscale PNG for desktop viewing.',
+  deviceLabel: zh ? '设备地址' : 'Device address',
+  destLabel: zh ? '保存目录' : 'Save folder',
+  probeBtn: zh ? '探测' : 'Probe',
+  downloadBtn: zh ? '下载封面' : 'Download',
+  pushBtn: zh ? '推送到设备' : 'Push to device',
+  offlineNote: zh
+    ? 'EPUB 在你的浏览器里用 jszip 本地解压读取，原文与封面都不上传。导出的 BMP 与卡片工坊同格式。'
+    : 'The EPUB is unzipped and read locally with jszip in your browser — neither the text nor the cover is uploaded. The exported BMP matches the Card Studio format.',
+  footNote: zh
+    ? '提示：封面尺寸按 480×800 墨水屏面板渲染。若设备书库使用不同的封面规格，请据其调整目标尺寸后再导入。'
+    : 'Note: the cover is rendered for the 480×800 e-ink panel. If your device’s library expects a different cover size, resize to that spec before importing.',
+};
+---
+
+<section class="ep py-6 sm:py-8" data-epub={JSON.stringify({ strings })}>
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div class="max-w-xl">
+        {/* Dropzone */}
+        <div id="epDrop" class="ep-drop" tabindex="0" role="button" aria-label={strings.pickEpub}>
+          <svg class="ep-drop-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 6c-2-1.5-5-1.5-8 0v12c3-1.5 6-1.5 8 0 2-1.5 5-1.5 8 0V6c-3-1.5-6-1.5-8 0z M12 6v12" />
+          </svg>
+          <p class="ep-drop-title" id="epPick">{strings.pickEpub}</p>
+          <p class="ep-drop-sub">{zh ? '本地解析元数据与封面，不上传。' : 'Metadata & cover parsed locally.'}</p>
+          <span id="epFileName" class="ep-filename"></span>
+        </div>
+        <input id="epFile" type="file" accept=".epub,.txt,application/epub+zip,text/plain" class="hidden" />
+
+        {/* Metadata */}
+        <h2 class="ep-h2">{L.metaTitle}</h2>
+        <dl class="ep-meta mt-3">
+          <div class="ep-row"><dt>{L.fldTitle}</dt><dd id="epTitle">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldAuthor}</dt><dd id="epAuthor">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldLang}</dt><dd id="epLang">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldPublisher}</dt><dd id="epPublisher">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldDate}</dt><dd id="epDate">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldId}</dt><dd id="epId">{strings.notFound}</dd></div>
+          <div class="ep-row ep-row-desc"><dt>{L.fldDesc}</dt><dd id="epDesc">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldChapters}</dt><dd id="epChapters">{strings.notFound}</dd></div>
+          <div class="ep-row"><dt>{L.fldFiles}</dt><dd id="epFiles">{strings.notFound}</dd></div>
+        </dl>
+      </div>
+
+      {/* Cover preview + controls */}
+      <div>
+        <aside class="lg:sticky lg:top-6">
+          <div class="rounded-[26px] border border-ink/15 bg-white p-3 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.35)]">
+            <div class="overflow-hidden rounded-md ring-1 ring-ink/10">
+              <canvas id="epCanvas" width="480" height="800" class="ep-canvas block h-auto w-full" aria-label="Cover preview"></canvas>
+            </div>
+          </div>
+          <p id="epSpec" class="mt-3 text-center font-mono text-[11px] tracking-wide text-ink/45"></p>
+        </aside>
+      </div>
+    </div>
+
+    {/* Controls under the grid, full width on mobile */}
+    <div class="mt-10 max-w-xl">
+      <h2 class="ep-h2 mt-0">{L.coverTitle}</h2>
+      <div class="ep-grid">
+        <div class="ep-field">
+          <span class="ep-flabel">{L.frameLabel}</span>
+          <select id="epFrame" class="ep-control">
+            <option value="contain">{L.frameContain}</option>
+            <option value="fill">{L.frameFill}</option>
+          </select>
+        </div>
+        <div class="ep-field">
+          <span class="ep-flabel">{L.brightness} <em id="epBrightVal" class="ep-num">0</em></span>
+          <input id="epBright" type="range" min="-100" max="100" step="1" value="0" class="ep-range" />
+        </div>
+        <div class="ep-field">
+          <span class="ep-flabel">{L.contrast} <em id="epContrastVal" class="ep-num">0</em></span>
+          <input id="epContrast" type="range" min="-100" max="100" step="1" value="0" class="ep-range" />
+        </div>
+      </div>
+
+      <h2 class="ep-h2">{L.formatTitle}</h2>
+      <div class="mt-3 grid gap-2.5 sm:grid-cols-3">
+        <label class="ep-radio">
+          <input type="radio" name="epFormat" value="bmp" />
+          <span class="ep-radio-body"><span class="ep-radio-title">BMP · 1-bit</span><span class="ep-radio-hint">{L.bmpHint}</span></span>
+        </label>
+        <label class="ep-radio">
+          <input type="radio" name="epFormat" value="gray" checked />
+          <span class="ep-radio-body"><span class="ep-radio-title">{zh ? 'BMP · 4级灰阶' : 'BMP · 4-level gray'}</span><span class="ep-radio-hint">{L.grayHint}</span></span>
+        </label>
+        <label class="ep-radio">
+          <input type="radio" name="epFormat" value="png" />
+          <span class="ep-radio-body"><span class="ep-radio-title">PNG</span><span class="ep-radio-hint">{L.pngHint}</span></span>
+        </label>
+      </div>
+
+      <div class="mt-6">
+        <label class="ep-field">
+          <span class="ep-flabel">{L.deviceLabel}</span>
+          <div class="flex items-center gap-2">
+            <input id="epDevice" type="text" value="http://192.168.4.1" class="ep-control flex-1" />
+            <button id="epProbe" type="button" class="ep-btn ep-btn-ghost shrink-0">{L.probeBtn}</button>
+          </div>
+        </label>
+        <label class="ep-field mt-3">
+          <span class="ep-flabel">{L.destLabel}</span>
+          <input id="epDest" type="text" value="/books" class="ep-control" />
+        </label>
+        <p id="epDeviceStatus" class="mt-2 font-mono text-xs text-ink/50"></p>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-3">
+        <button id="epDownload" type="button" class="ep-btn ep-btn-ghost">{L.downloadBtn}</button>
+        <button id="epPush" type="button" class="ep-btn ep-btn-primary">{L.pushBtn}</button>
+      </div>
+      <p id="epStatus" class="mt-4 font-mono text-xs text-ink/60">{strings.ready}</p>
+      <p class="mt-2 max-w-[60ch] text-xs/5 text-ink/45">{L.offlineNote}</p>
+    </div>
+
+    <p class="mt-12 border-t border-ink/10 pt-4 text-xs/5 text-ink/40">{L.footNote}</p>
+  </div>
+</section>
+
+<style>
+  .ep-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    cursor: pointer;
+    border: 1.5px dashed color-mix(in oklab, var(--color-ink) 22%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    padding: 30px 20px;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .ep-drop:hover,
+  .ep-drop:focus-visible,
+  .ep-drop.dragover {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+    outline: none;
+  }
+  .ep-drop.has-file {
+    padding: 14px 20px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ep-drop.has-file .ep-drop-icon,
+  .ep-drop.has-file .ep-drop-sub {
+    display: none;
+  }
+  .ep-drop.has-file .ep-drop-title::after {
+    content: ' ✓';
+    color: var(--color-accent-600);
+  }
+  .ep-drop-icon {
+    color: var(--color-accent-600);
+  }
+  .ep-drop-title {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--color-ink);
+  }
+  .ep-drop-sub {
+    font-size: 13px;
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  }
+  .ep-filename {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+
+  .ep-h2 {
+    margin-top: 32px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-accent-600);
+  }
+  .ep-meta {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+  }
+  .ep-row {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+    padding: 9px 2px;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 8%, transparent);
+  }
+  .ep-row dt {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+    padding-top: 2px;
+  }
+  .ep-row dd {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-ink);
+    word-break: break-word;
+  }
+  .ep-row-desc dd {
+    font-size: 13px;
+    line-height: 1.6;
+    color: color-mix(in oklab, var(--color-ink) 80%, transparent);
+  }
+
+  .ep-grid {
+    display: grid;
+    gap: 16px;
+    margin-top: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ep-grid .ep-field:first-child {
+    grid-column: 1 / -1;
+  }
+  .ep-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ep-flabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .ep-control {
+    width: 100%;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .ep-control:focus {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-500) 25%, transparent);
+  }
+  .ep-range {
+    width: 100%;
+    accent-color: var(--color-accent-500);
+    cursor: pointer;
+  }
+  .ep-num {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-accent-600);
+  }
+
+  .ep-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .ep-btn-ghost {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+  .ep-btn-ghost:hover {
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
+  }
+  .ep-btn-primary {
+    border: 1px solid var(--color-accent-600);
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    font-weight: 600;
+  }
+  .ep-btn-primary:hover {
+    background: var(--color-accent-700);
+    border-color: var(--color-accent-700);
+  }
+
+  .ep-radio {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+    border-radius: 12px;
+    background: var(--color-surface);
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .ep-radio:has(input:checked) {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+  }
+  .ep-radio input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent-600);
+  }
+  .ep-radio-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .ep-radio-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--color-ink);
+  }
+  .ep-radio-hint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  }
+
+  .ep-canvas {
+    image-rendering: pixelated;
+  }
+</style>
+
+<script>
+  import { initEpTool } from '../tools/ep';
+
+  const section = document.querySelector('[data-epub]');
+  if (section) {
+    const props = JSON.parse(section.getAttribute('data-epub') || '{}');
+    initEpTool(props);
+  }
+</script>

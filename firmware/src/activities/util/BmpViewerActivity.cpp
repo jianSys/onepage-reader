@@ -113,9 +113,32 @@ void BmpViewerActivity::onEnter() {
 
       // Draw UI hints on the base layer
       GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-      // Single pass for non-grayscale images
 
-      renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+      if (bitmap.hasGreyscale()) {
+        // 4-level grayscale image: commit the BW base, then overlay the LSB/MSB
+        // gray planes so the panel shows black / dark-gray / light-gray / white.
+        // Mirrors SleepActivity's proven full-image grayscale path; hints live in
+        // the base and show through wherever the planes leave pixels untouched.
+        renderer.displayGrayscaleBase(HalDisplay::HALF_REFRESH);
+
+        bitmap.rewindToData();
+        renderer.clearScreen(0x00);
+        renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
+        renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, 0, 0);
+        renderer.copyGrayscaleLsbBuffers();
+
+        bitmap.rewindToData();
+        renderer.clearScreen(0x00);
+        renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
+        renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, 0, 0);
+        renderer.copyGrayscaleMsbBuffers();
+
+        renderer.displayGrayBuffer();
+        renderer.setRenderMode(GfxRenderer::BW);
+      } else {
+        // Single pass for 1-bit images
+        renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+      }
 
     } else {
       // Handle file parsing error

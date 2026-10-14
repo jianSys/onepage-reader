@@ -1,0 +1,407 @@
+---
+import type { Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+
+const S = {
+  pick: zh ? '选择或拖入一张图片' : 'Choose or drop an image',
+  drop: zh ? '支持 JPG / PNG / WebP，全部在本地处理，不上传。' : 'JPG / PNG / WebP — processed entirely in your browser.',
+  replace: zh ? '换一张' : 'Change image',
+  rendering: zh ? '正在生成…' : 'Rendering…',
+  ready: zh ? '就绪。' : 'Ready.',
+  pushed: zh ? '已推送到设备。' : 'Pushed to device.',
+  pushFailed: zh ? '推送失败，请检查设备地址与网络。' : 'Push failed — check the device address and network.',
+  noImage: zh ? '请先选择一张图片。' : 'Pick an image first.',
+  deviceChecking: zh ? '检测中…' : 'Checking…',
+  deviceOnline: zh ? '设备在线。' : 'Device online.',
+  deviceOffline: zh ? '设备离线或未填写地址。' : 'Device offline or address missing.',
+  specGray: '480 × 800 · 4级灰阶',
+  specBmp: '480 × 800 · 1-bit',
+  specPng: '480 × 800 · PNG',
+};
+
+const strings = {
+  pick: S.pick,
+  drop: S.drop,
+  replace: S.replace,
+  rendering: S.rendering,
+  ready: S.ready,
+  pushed: S.pushed,
+  pushFailed: S.pushFailed,
+  noImage: S.noImage,
+  deviceChecking: S.deviceChecking,
+  deviceOnline: S.deviceOnline,
+  deviceOffline: S.deviceOffline,
+  specGray: S.specGray,
+  specBmp: S.specBmp,
+  specPng: S.specPng,
+  dlBmp: zh ? '下载 BMP' : 'Download BMP',
+  dlPng: zh ? '下载 PNG' : 'Download PNG',
+};
+
+const L = {
+  zoom: zh ? '缩放' : 'Zoom',
+  posX: zh ? '左右位置' : 'Horizontal',
+  posY: zh ? '上下位置' : 'Vertical',
+  brightness: zh ? '亮度' : 'Brightness',
+  contrast: zh ? '对比度' : 'Contrast',
+  dither: zh ? '抖动算法' : 'Dither',
+  ditherFS: zh ? 'Floyd–Steinberg（细腻）' : 'Floyd–Steinberg (smooth)',
+  ditherBayer: zh ? 'Bayer 有序抖动' : 'Bayer ordered',
+  ditherNone: zh ? '硬阈值（高对比）' : 'Hard threshold (high contrast)',
+  frameTitle: zh ? '取景' : 'Framing',
+  formatTitle: zh ? '导出格式' : 'Export format',
+  advTitle: zh ? '色调与抖动' : 'Tone & dither',
+  reset: zh ? '重置' : 'Reset',
+  bmpHint: zh ? '黑白位图，任意固件可显示。' : 'True black-and-white; shows on any firmware.',
+  grayHint: zh ? '四档灰，照片更自然（需固件四灰管线）。' : 'Four grays — photos look natural (needs the 4-gray firmware path).',
+  pngHint: zh ? '完整灰度 PNG，供电脑查看或自行转换。' : 'Full grayscale PNG for desktop viewing.',
+  deviceLabel: zh ? '设备地址' : 'Device address',
+  destLabel: zh ? '保存目录' : 'Save folder',
+  probeBtn: zh ? '探测' : 'Probe',
+  downloadBtn: zh ? '下载 BMP' : 'Download',
+  pushBtn: zh ? '推送到设备' : 'Push to device',
+  dragHint: zh ? '可在右侧预览上拖动平移、滚轮缩放（与滑杆同步）。' : 'Drag on the preview to pan, scroll to zoom (kept in sync with the sliders).',
+  offlineNote: zh
+    ? '推送走设备内置 Web 服务的 /upload 接口；设备无 CORS 头，探测用 no-cors，能连通即视为在线。'
+    : 'Push uses the device’s built-in /upload endpoint; the probe uses no-cors since the device sends no CORS headers.',
+  footNote: zh
+    ? '生成的 BMP 与卡片工坊同格式，可直接放进 SD 卡的 /images 目录用图片浏览器打开。'
+    : 'The exported BMP matches the Card Studio format — drop it in the SD card’s /images folder and open it in the image viewer.',
+};
+---
+
+<section class="im py-6 sm:py-8" data-image={JSON.stringify({ strings })}>
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div class="max-w-xl">
+        {/* Dropzone */}
+        <div id="imDrop" class="im-drop" tabindex="0" role="button" aria-label={S.pick}>
+          <svg class="im-drop-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 5h16v14H4z M4 15l4-4 4 4 3-3 5 5 M15 9h.01" />
+          </svg>
+          <p class="im-drop-title" id="imPick">{S.pick}</p>
+          <p class="im-drop-sub">{S.drop}</p>
+          <span id="imFileName" class="im-filename"></span>
+        </div>
+        <input id="imFile" type="file" accept="image/*" class="hidden" />
+
+        {/* Framing */}
+        <h2 class="im-h2">{L.frameTitle}</h2>
+        <div class="im-grid">
+          <div class="im-field">
+            <span class="im-flabel">{L.zoom} <em id="imZoomVal" class="im-num">100%</em></span>
+            <input id="imZoom" type="range" min="100" max="400" step="1" value="100" class="im-range" />
+          </div>
+          <div class="im-field">
+            <span class="im-flabel">{L.posX}</span>
+            <input id="imX" type="range" min="-400" max="400" step="1" value="0" class="im-range" />
+          </div>
+          <div class="im-field">
+            <span class="im-flabel">{L.posY}</span>
+            <input id="imY" type="range" min="-600" max="600" step="1" value="0" class="im-range" />
+          </div>
+        </div>
+        <p class="im-hint">{L.dragHint}</p>
+
+        {/* Tone & dither */}
+        <h2 class="im-h2">{L.advTitle}</h2>
+        <div class="im-grid">
+          <div class="im-field">
+            <span class="im-flabel">{L.brightness} <em id="imBrightVal" class="im-num">0</em></span>
+            <input id="imBright" type="range" min="-100" max="100" step="1" value="0" class="im-range" />
+          </div>
+          <div class="im-field">
+            <span class="im-flabel">{L.contrast} <em id="imContrastVal" class="im-num">0</em></span>
+            <input id="imContrast" type="range" min="-100" max="100" step="1" value="0" class="im-range" />
+          </div>
+          <div class="im-field" id="imDitherRow">
+            <span class="im-flabel">{L.dither} <span class="im-tag">{zh ? '仅 1-bit 生效' : '1-bit only'}</span></span>
+            <select id="imDither" class="im-control">
+              <option value="fs">{L.ditherFS}</option>
+              <option value="bayer">{L.ditherBayer}</option>
+              <option value="none">{L.ditherNone}</option>
+            </select>
+          </div>
+        </div>
+        <button id="imReset" type="button" class="im-btn im-btn-ghost mt-3">{L.reset}</button>
+
+        {/* Format */}
+        <h2 class="im-h2">{L.formatTitle}</h2>
+        <div class="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="im-radio">
+            <input type="radio" name="imFormat" value="bmp" />
+            <span class="im-radio-body">
+              <span class="im-radio-title">BMP · 1-bit</span>
+              <span class="im-radio-hint">{L.bmpHint}</span>
+            </span>
+          </label>
+          <label class="im-radio">
+            <input type="radio" name="imFormat" value="gray" checked />
+            <span class="im-radio-body">
+              <span class="im-radio-title">{zh ? 'BMP · 4级灰阶' : 'BMP · 4-level gray'}</span>
+              <span class="im-radio-hint">{L.grayHint}</span>
+            </span>
+          </label>
+          <label class="im-radio">
+            <input type="radio" name="imFormat" value="png" />
+            <span class="im-radio-body">
+              <span class="im-radio-title">PNG</span>
+              <span class="im-radio-hint">{L.pngHint}</span>
+            </span>
+          </label>
+        </div>
+
+        {/* Device */}
+        <div class="mt-6">
+          <label class="im-field">
+            <span class="im-flabel">{L.deviceLabel}</span>
+            <div class="flex items-center gap-2">
+              <input id="imDevice" type="text" value="http://192.168.4.1" class="im-control flex-1" />
+              <button id="imProbe" type="button" class="im-btn im-btn-ghost shrink-0">{L.probeBtn}</button>
+            </div>
+          </label>
+          <label class="im-field mt-3">
+            <span class="im-flabel">{L.destLabel}</span>
+            <input id="imDest" type="text" value="/images" class="im-control" />
+          </label>
+          <p id="imDeviceStatus" class="mt-2 font-mono text-xs text-ink/50"></p>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="imDownload" type="button" class="im-btn im-btn-ghost">{L.downloadBtn}</button>
+          <button id="imPush" type="button" class="im-btn im-btn-primary">{L.pushBtn}</button>
+        </div>
+
+        <p id="imStatus" class="mt-4 font-mono text-xs text-ink/60">{S.ready}</p>
+        <p class="mt-2 max-w-[60ch] text-xs/5 text-ink/45">{L.offlineNote}</p>
+      </div>
+
+      {/* Preview */}
+      <aside class="justify-self-center lg:sticky lg:top-6 lg:self-start">
+        <div class="rounded-[26px] border border-ink/15 bg-white p-3 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.35)]">
+          <div class="overflow-hidden rounded-md ring-1 ring-ink/10">
+            <canvas id="imCanvas" width="480" height="800" class="im-canvas block h-auto w-full" aria-label="Image preview"></canvas>
+          </div>
+        </div>
+        <p id="imSpec" class="mt-3 text-center font-mono text-[11px] tracking-wide text-ink/45"></p>
+      </aside>
+    </div>
+
+    <p class="mt-12 border-t border-ink/10 pt-4 text-xs/5 text-ink/40">{L.footNote}</p>
+  </div>
+</section>
+
+<style>
+  .im-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    cursor: pointer;
+    border: 1.5px dashed color-mix(in oklab, var(--color-ink) 22%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    padding: 34px 20px;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .im-drop:hover,
+  .im-drop:focus-visible,
+  .im-drop.dragover {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+    outline: none;
+  }
+  .im-drop.has-image {
+    padding: 16px 20px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .im-drop.has-image .im-drop-icon,
+  .im-drop.has-image .im-drop-sub {
+    display: none;
+  }
+  .im-drop.has-image .im-drop-title::after {
+    content: ' ✓';
+    color: var(--color-accent-600);
+  }
+  .im-drop-icon {
+    color: var(--color-accent-600);
+  }
+  .im-drop-title {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--color-ink);
+  }
+  .im-drop-sub {
+    font-size: 13px;
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  }
+  .im-filename {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+
+  .im-h2 {
+    margin-top: 32px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-accent-600);
+  }
+  .im-grid {
+    display: grid;
+    gap: 16px;
+    margin-top: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .im-grid .im-field:last-child {
+    grid-column: 1 / -1;
+  }
+  .im-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .im-flabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .im-control {
+    width: 100%;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .im-control:focus {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-500) 25%, transparent);
+  }
+  .im-range {
+    width: 100%;
+    accent-color: var(--color-accent-500);
+    cursor: pointer;
+  }
+  .im-num {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-accent-600);
+  }
+  .im-tag {
+    margin-left: 6px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+    padding: 1px 7px;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+  .im-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+
+  .im-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .im-btn-ghost {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+  .im-btn-ghost:hover {
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
+  }
+  .im-btn-primary {
+    border: 1px solid var(--color-accent-600);
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    font-weight: 600;
+  }
+  .im-btn-primary:hover {
+    background: var(--color-accent-700);
+    border-color: var(--color-accent-700);
+  }
+
+  .im-radio {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+    border-radius: 12px;
+    background: var(--color-surface);
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .im-radio:has(input:checked) {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+  }
+  .im-radio input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent-600);
+  }
+  .im-radio-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .im-radio-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--color-ink);
+  }
+  .im-radio-hint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  }
+
+  .im-canvas {
+    image-rendering: pixelated;
+    cursor: grab;
+    touch-action: none;
+  }
+  .im-canvas.grabbing {
+    cursor: grabbing;
+  }
+</style>
+
+<script>
+  import { initImageTool } from '../tools/image';
+
+  const section = document.querySelector('[data-image]');
+  if (section) {
+    const props = JSON.parse(section.getAttribute('data-image') || '{}');
+    initImageTool(props);
+  }
+</script>

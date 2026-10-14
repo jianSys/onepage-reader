@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Nav from '../../components/Nav.astro';
+import ToolShell from '../../components/ToolShell.astro';
+import EpTool from '../../components/EpTool.astro';
+import Footer from '../../components/Footer.astro';
+import { ui, localizedPath } from '../../i18n/ui';
+
+const lang = 'zh';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="书籍信息与封面 — 壹頁 · OnePage"
+  description="读取 EPUB / TXT 元数据（书名、作者、语言、出版社、章节数），并把内嵌封面变成 480×800 墨水屏位图 —— 1-bit 抖动或 4 级灰阶。解压与解析全部在你的浏览器里完成。"
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.epub.name}
+      title={t.items.epub.name}
+      lede={t.items.epub.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <EpTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

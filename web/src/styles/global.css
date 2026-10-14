@@ -9,22 +9,22 @@
   --font-serif: "Lora", "Noto Serif SC", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  /* cool drafting-paper base — deliberately cooler than CrossPoint's warm cream */
-  --color-paper: #ecedef;
-  --color-surface: #f6f7f9;
-  --color-ink: #1a1916;
+  /* warm drafting-paper base — soft cream desk, near-white card, warm-black ink */
+  --color-paper: #faf7f1;
+  --color-surface: #fffdfa;
+  --color-ink: #292623;
 
-  /* restrained ink-red accent */
-  --color-accent-50: #faf1ef;
-  --color-accent-100: #f2dcd6;
-  --color-accent-200: #e4b7ac;
-  --color-accent-300: #d28d7e;
-  --color-accent-400: #bd6151;
-  --color-accent-500: #a23b2d;
-  --color-accent-600: #872f22;
-  --color-accent-700: #6c261b;
-  --color-accent-800: #561f16;
-  --color-accent-900: #3f1810;
+  /* single restrained terracotta accent */
+  --color-accent-50: #fbf1ea;
+  --color-accent-100: #f7e1d3;
+  --color-accent-200: #edc3a9;
+  --color-accent-300: #e0a077;
+  --color-accent-400: #d4834f;
+  --color-accent-500: #cb6a41;
+  --color-accent-600: #b55733;
+  --color-accent-700: #8f452a;
+  --color-accent-800: #6e3623;
+  --color-accent-900: #4d261a;
 }
 
 html {

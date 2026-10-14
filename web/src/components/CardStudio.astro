@@ -2,6 +2,7 @@
 import type { Lang } from '../i18n/ui';
 import { ui } from '../i18n/ui';
 import { TEMPLATES, CATEGORY_ORDER } from '../cards/templates';
+import { FONT_OPTIONS } from '../cards/primitives';
 
 interface Props {
   lang: Lang;
@@ -17,13 +18,31 @@ const strings = {
   fetchFailed: c.fetchFailed,
   pushed: c.pushed,
   pushFailed: c.pushFailed,
+  deviceChecking: c.deviceChecking,
+  deviceOnline: c.deviceOnline,
+  deviceOffline: c.deviceOffline,
+  library: c.library,
+};
+
+// Runtime labels the library tiles need for a saved card: display name + category badge.
+const tplMeta: Record<string, { name: string; cat: string }> = {};
+for (const tpl of TEMPLATES) {
+  tplMeta[tpl.id] = { name: c.templates[tpl.id]?.name ?? tpl.id, cat: c.categories[tpl.category] ?? tpl.category };
+}
+
+// Labels the runtime uses for templates that don't declare custom `fields`.
+const fieldLabels = {
+  content: c.contentLabel,
+  sub: c.title2Label,
+  items: c.itemsLabel,
+  itemsPlaceholder: c.itemsHint,
 };
 
 // Per-template hint shown above the editor when a card is picked.
 const hints: Record<string, string> = {};
 for (const tpl of TEMPLATES) hints[tpl.id] = c.templates[tpl.id]?.hint ?? '';
 
-const props = { strings, hints };
+const props = { strings, hints, fieldLabels, tplMeta };
 
 // Filter chips: only categories that actually have templates.
 const cats = CATEGORY_ORDER.map((cat) => ({
@@ -76,27 +95,36 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
         <h2 class="font-mono text-xs uppercase tracking-[0.16em] text-accent-600">{c.editorTitle}</h2>
         <p id="csHint" class="mt-2 min-h-[1.5em] text-sm/6 text-ink/60"></p>
 
-        <label class="mt-4 block">
-          <span class={labelCls}>{c.contentLabel}</span>
-          <textarea id="csContent" rows="3" class={inputCls}></textarea>
-        </label>
-        <label class="mt-4 block">
-          <span class={labelCls}>{c.title2Label}</span>
-          <input id="csSub" type="text" class={inputCls} />
-        </label>
-        <label id="csItemsWrap" class="mt-4 block">
-          <span class={labelCls}>{c.itemsLabel}</span>
-          <textarea id="csItems" rows="5" placeholder={c.itemsHint} class={inputCls}></textarea>
-        </label>
+        {/* Fields rendered at runtime from the selected template's `fields` schema. */}
+        <div id="csFields" class="mt-4 space-y-4"></div>
 
-        {/* Photo picker — shown only for the photo template */}
-        <div id="csPhotoWrap" class="mt-4 hidden">
-          <span class={labelCls}>Photo</span>
-          <div class="mt-1.5 flex flex-wrap items-center gap-3">
-            <button id="csPhotoBtn" type="button" class="cs-btn cs-btn-ghost">{c.photoBtn}</button>
-            <input id="csPhotoFile" type="file" accept="image/*" class="hidden" />
-            <span class="text-xs text-ink/45">{c.photoHint}</span>
+        {/* Image framing: shown only while the card actually holds an uploaded image. */}
+        <div id="csImgAdjust" class="mt-5 space-y-4" style="display:none">
+          <div class="cs-field">
+            <span class="cs-flabel">{lang === 'zh' ? '图片缩放' : 'Image zoom'} <em id="csImgZoomVal" class="cs-num">100%</em></span>
+            <input id="csImgZoom" type="range" min="100" max="300" step="1" value="100" class="cs-range" />
           </div>
+          <div class="cs-field">
+            <span class="cs-flabel">{lang === 'zh' ? '左右位置' : 'Horizontal position'}</span>
+            <input id="csImgX" type="range" min="0" max="100" step="1" value="50" class="cs-range" />
+          </div>
+          <div class="cs-field">
+            <span class="cs-flabel">{lang === 'zh' ? '上下位置' : 'Vertical position'}</span>
+            <input id="csImgY" type="range" min="0" max="100" step="1" value="50" class="cs-range" />
+          </div>
+          <p class="cs-fhint">{lang === 'zh' ? '选图后可直接在预览上拖动平移、滚轮缩放（与下方滑杆同步）；导出与预览一致。' : 'After picking an image, drag on the preview to pan and scroll to zoom (kept in sync with the sliders below) — preview matches the export.'}</p>
+        </div>
+
+        {/* Typeface: a global control for text templates, rasterized on the client (WYSIWYG). */}
+        <div class="cs-field mt-4">
+          <span class="cs-flabel">{c.fontLabel}</span>
+          <select id="csFont" class="cs-control">
+            {
+              FONT_OPTIONS.map((f) => (
+                <option value={f.id}>{lang === 'zh' ? f.label.zh : f.label.en}</option>
+              ))
+            }
+          </select>
         </div>
 
         <div class="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -104,22 +132,54 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
             <input id="csFit" type="checkbox" checked />
             <span>{c.fitLabel}</span>
           </label>
-          <label class="cs-check">
-            <input id="csDither" type="checkbox" checked />
-            <span>{c.ditherLabel}</span>
-          </label>
-          <button id="csFetch" type="button" class="cs-btn cs-btn-ghost">{c.fetchBtn}</button>
+          <button id="csFetch" type="button" class="cs-btn cs-btn-ghost ml-auto">{c.fetchBtn}</button>
         </div>
-        <p class="mt-2 max-w-[60ch] text-xs/5 text-ink/45">{c.ditherHint}</p>
+
+        {/* Advanced: dither mode + brightness / contrast */}
+        <div class="mt-4">
+          <button id="csAdvToggle" type="button" class="cs-adv-toggle" aria-expanded="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" /></svg>
+            <span>{c.adv.title}</span>
+          </button>
+          <div id="csAdvBody" class="cs-adv-body hidden">
+            <div class="cs-field">
+              <span class="cs-flabel">{c.adv.dither}</span>
+              <select id="csDitherMode" class="cs-control">
+                <option value="fs">{c.adv.ditherFS}</option>
+                <option value="bayer">{c.adv.ditherBayer}</option>
+                <option value="none">{c.adv.ditherNone}</option>
+              </select>
+            </div>
+            <div class="cs-field">
+              <span class="cs-flabel">{c.adv.brightness} <em id="csBrightVal" class="cs-num">0</em></span>
+              <input id="csBright" type="range" min="-100" max="100" step="1" value="0" class="cs-range" />
+            </div>
+            <div class="cs-field">
+              <span class="cs-flabel">{c.adv.contrast} <em id="csContrastVal" class="cs-num">0</em></span>
+              <input id="csContrast" type="range" min="-100" max="100" step="1" value="0" class="cs-range" />
+            </div>
+            <div class="flex items-end justify-between gap-3">
+              <p class="cs-fhint flex-1">{c.adv.hint}</p>
+              <button id="csAdvReset" type="button" class="cs-btn cs-btn-ghost shrink-0">{c.adv.reset}</button>
+            </div>
+          </div>
+        </div>
 
         {/* Export format */}
         <h2 class="mt-8 font-mono text-xs uppercase tracking-[0.16em] text-accent-600">{c.formatLabel}</h2>
-        <div class="mt-3 grid gap-2.5 sm:grid-cols-2">
+        <div class="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           <label class="cs-radio">
-            <input type="radio" name="csFormat" value="bmp" checked />
+            <input type="radio" name="csFormat" value="bmp" />
             <span class="cs-radio-body">
               <span class="cs-radio-title">BMP · 1-bit</span>
               <span class="cs-radio-hint">{c.bmpHint}</span>
+            </span>
+          </label>
+          <label class="cs-radio">
+            <input type="radio" name="csFormat" value="gray" checked />
+            <span class="cs-radio-body">
+              <span class="cs-radio-title">{lang === 'zh' ? 'BMP · 4级灰阶' : 'BMP · 4-level gray'}</span>
+              <span class="cs-radio-hint">{c.grayHint}</span>
             </span>
           </label>
           <label class="cs-radio">
@@ -132,11 +192,18 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
         </div>
 
         {/* Push / download */}
-        <label class="mt-6 block">
-          <span class={labelCls}>{c.deviceUrlLabel}</span>
-          <input id="csDevice" type="text" value="http://192.168.4.1" class={inputCls} />
-        </label>
+        <div class="mt-6">
+          <label class="block">
+            <span class={labelCls}>{c.deviceUrlLabel}</span>
+            <div class="flex items-center gap-2">
+              <input id="csDevice" type="text" value="http://192.168.4.1" class={inputCls + ' flex-1'} />
+              <button id="csProbe" type="button" class="cs-btn cs-btn-ghost shrink-0">{c.probeBtn}</button>
+            </div>
+          </label>
+          <p id="csDeviceStatus" class="mt-2 font-mono text-xs text-ink/50"></p>
+        </div>
         <div class="mt-4 flex flex-wrap gap-3">
+          <button id="csSaveWork" type="button" class="cs-btn cs-btn-ghost">{c.library.saveBtn}</button>
           <button id="csDownload" type="button" class="cs-btn cs-btn-ghost">{c.downloadBtn}</button>
           <button id="csPush" type="button" class="cs-btn cs-btn-primary">{c.pushBtn}</button>
         </div>
@@ -152,8 +219,27 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
             <canvas id="csCanvas" width="480" height="800" class="cs-canvas block h-auto w-full" aria-label="Card preview"></canvas>
           </div>
         </div>
-        <p class="mt-3 text-center font-mono text-[11px] tracking-wide text-ink/45">480 × 800 · 1-bit</p>
+        <p id="csSpec" class="mt-3 text-center font-mono text-[11px] tracking-wide text-ink/45">480 × 800 · 4级灰阶</p>
       </aside>
+    </div>
+
+    {/* ── My works: multi-card library saved in the browser ───────────── */}
+    <div class="mt-14 border-t border-ink/10 pt-10">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h2 class="font-mono text-xs uppercase tracking-[0.16em] text-accent-600">{c.library.title}</h2>
+        <span id="csLibCount" class="font-mono text-[11px] text-ink/45"></span>
+        <div class="ml-auto flex gap-2">
+          <button id="csLibImport" type="button" class="cs-btn cs-btn-ghost">{c.library.importBtn}</button>
+          <button id="csLibExport" type="button" class="cs-btn cs-btn-ghost">{c.library.exportBtn}</button>
+        </div>
+      </div>
+      <p class="mt-2 max-w-[70ch] text-sm/6 text-ink/55">{c.library.lede}</p>
+      <input id="csLibFile" type="file" accept="application/json,.json" class="hidden" />
+
+      <p id="csLibEmpty" class="mt-8 rounded-xl border border-dashed border-ink/15 bg-surface/60 px-5 py-8 text-center text-sm text-ink/45">
+        {c.library.empty}
+      </p>
+      <div id="csLibrary" class="cs-lib-none mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"></div>
     </div>
 
     <p class="mt-10 border-t border-ink/10 pt-4 text-xs/5 text-ink/40">{c.footNote}</p>
@@ -163,58 +249,265 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
 <style>
   /* Filter chips */
   .cs-filter {
-    border: 1px solid rgba(17, 17, 17, 0.15);
-    background: #fff;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: var(--color-surface);
     border-radius: 999px;
     padding: 6px 14px;
     font-family: var(--font-mono);
     font-size: 12px;
-    color: rgba(17, 17, 17, 0.6);
+    color: color-mix(in oklab, var(--color-ink) 60%, transparent);
     cursor: pointer;
     transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
   }
   .cs-filter:hover {
-    color: #111;
-    border-color: rgba(17, 17, 17, 0.3);
+    color: var(--color-ink);
+    border-color: color-mix(in oklab, var(--color-ink) 32%, transparent);
   }
   .cs-filter[aria-current='true'] {
-    background: #111;
-    color: #fff;
-    border-color: #111;
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    border-color: var(--color-accent-600);
   }
 
-  /* Gallery tiles */
+  /* Gallery tiles — a paper card floating on the desk */
   .cs-tile {
     display: block;
     text-align: left;
-    border: 1px solid rgba(17, 17, 17, 0.1);
+    border: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
     border-radius: 14px;
-    background: #fff;
+    background: var(--color-surface);
     padding: 10px;
     cursor: pointer;
     transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
   }
   .cs-tile:hover {
     transform: translateY(-2px);
-    border-color: rgba(17, 17, 17, 0.28);
-    box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.4);
+    border-color: color-mix(in oklab, var(--color-accent-500) 55%, transparent);
+    box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.4);
   }
   .cs-tile[aria-current='true'] {
-    border-color: #111;
-    box-shadow: 0 0 0 2px #111;
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 2px var(--color-accent-500);
   }
   .cs-tile-screen {
     display: block;
     overflow: hidden;
     border-radius: 8px;
-    background: #fff;
-    box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.06);
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 8%, transparent);
     line-height: 0;
   }
   .cs-tile-screen canvas {
     display: block;
     width: 100%;
     height: auto;
+  }
+
+  /* Library visibility toggle (robust against Tailwind display-utility clashes) */
+  .cs-lib-none {
+    display: none !important;
+  }
+
+  /* My-works tiles — same paper-card language as the template gallery */
+  .cs-work {
+    position: relative;
+    display: block;
+    text-align: left;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+    border-radius: 14px;
+    background: var(--color-surface);
+    padding: 10px;
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .cs-work:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--color-accent-500) 55%, transparent);
+    box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.4);
+  }
+  .cs-work[aria-current='true'] {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 2px var(--color-accent-500);
+  }
+  .cs-work-screen {
+    display: block;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 8%, transparent);
+    line-height: 0;
+  }
+  .cs-work-screen img {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+  }
+  .cs-work-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .cs-work-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-serif);
+    font-size: 15px;
+    line-height: 1.2;
+    color: var(--color-ink);
+  }
+  .cs-work-badge {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-ink) 5%, transparent);
+    padding: 2px 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+  .cs-work-pin {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 1;
+    border-radius: 999px;
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    padding: 1px 7px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+  .cs-work-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 10px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.16s ease;
+  }
+  .cs-work:hover .cs-work-actions,
+  .cs-work:focus-within .cs-work-actions {
+    opacity: 1;
+    max-height: 5rem;
+  }
+  .cs-work-act {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 0.14s ease, color 0.14s ease;
+  }
+  .cs-work-act:hover {
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
+  }
+  .cs-work-act[data-act='remove']:hover {
+    border-color: #d73431;
+    color: #d73431;
+  }
+
+  /* Form fields — rendered at runtime from the template's fields schema */
+  .cs-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .cs-field-check {
+    flex-direction: row;
+    align-items: center;
+  }
+  .cs-flabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .cs-control {
+    width: 100%;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .cs-control:focus {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-500) 25%, transparent);
+  }
+  textarea.cs-control {
+    resize: vertical;
+    line-height: 1.5;
+  }
+  .cs-imgrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .cs-imgname {
+    font-size: 12px;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+  .cs-fhint {
+    font-size: 12px;
+    line-height: 1.5;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+
+  /* Advanced collapsible panel */
+  .cs-adv-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .cs-adv-toggle:hover {
+    color: var(--color-accent-600);
+  }
+  .cs-adv-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--color-accent-500) 5%, var(--color-surface));
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+  }
+  .cs-adv-body.hidden {
+    display: none;
+  }
+  .cs-range {
+    width: 100%;
+    accent-color: var(--color-accent-500);
+    cursor: pointer;
+  }
+  .cs-num {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-accent-600);
   }
 
   /* Buttons */
@@ -227,21 +520,23 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
     transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
   }
   .cs-btn-ghost {
-    border: 1px solid rgba(17, 17, 17, 0.2);
-    background: #fff;
-    color: #111;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+    background: #ffffff;
+    color: var(--color-ink);
   }
   .cs-btn-ghost:hover {
-    border-color: #111;
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
   }
   .cs-btn-primary {
-    border: 1px solid #111;
-    background: #111;
-    color: #fff;
+    border: 1px solid var(--color-accent-600);
+    background: var(--color-accent-600);
+    color: var(--color-surface);
     font-weight: 600;
   }
   .cs-btn-primary:hover {
-    background: #26241f;
+    background: var(--color-accent-700);
+    border-color: var(--color-accent-700);
   }
 
   .cs-check {
@@ -249,35 +544,35 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: rgba(17, 17, 17, 0.7);
+    color: color-mix(in oklab, var(--color-ink) 72%, transparent);
     cursor: pointer;
   }
   .cs-check input {
     width: 16px;
     height: 16px;
-    accent-color: #111;
+    accent-color: var(--color-accent-600);
   }
 
   .cs-radio {
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    border: 1px solid rgba(17, 17, 17, 0.12);
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
     border-radius: 12px;
-    background: #fff;
+    background: var(--color-surface);
     padding: 12px;
     cursor: pointer;
     transition: border-color 0.16s ease, background 0.16s ease;
   }
   .cs-radio:has(input:checked) {
-    border-color: #111;
-    background: rgba(17, 17, 17, 0.03);
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
   }
   .cs-radio input {
     margin-top: 3px;
     width: 16px;
     height: 16px;
-    accent-color: #111;
+    accent-color: var(--color-accent-600);
   }
   .cs-radio-body {
     display: flex;
@@ -288,16 +583,24 @@ const labelCls = 'block font-mono text-[11px] uppercase tracking-wide text-ink/5
     font-family: var(--font-mono);
     font-size: 12px;
     letter-spacing: 0.04em;
-    color: #111;
+    color: var(--color-ink);
   }
   .cs-radio-hint {
     font-size: 11px;
     line-height: 1.4;
-    color: rgba(17, 17, 17, 0.55);
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
   }
 
   .cs-canvas {
     image-rendering: pixelated;
+  }
+  /* Grab-to-frame affordance: only when the card actually holds an image. */
+  .cs-canvas.cs-grabbable {
+    cursor: grab;
+    touch-action: none;
+  }
+  .cs-canvas.cs-grabbing {
+    cursor: grabbing;
   }
 </style>
 

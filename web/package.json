@@ -18,7 +18,8 @@
     "astro": "^5.6.1",
     "esptool-js": "^0.6.0",
     "harfbuzzjs": "^1.4.0",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

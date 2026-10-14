@@ -1,0 +1,438 @@
+---
+import type { Lang } from '../i18n/ui';
+import { FONT_OPTIONS } from '../cards/primitives';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+
+const strings = {
+  pickHint: zh ? '选择背景图（可选）' : 'Choose a background (optional)',
+  rendering: zh ? '正在生成…' : 'Rendering…',
+  ready: zh ? '就绪。' : 'Ready.',
+  pushed: zh ? '已推送到设备。' : 'Pushed to device.',
+  pushFailed: zh ? '推送失败，请检查设备地址与网络。' : 'Push failed — check the device address and network.',
+  deviceChecking: zh ? '检测中…' : 'Checking…',
+  deviceOnline: zh ? '设备在线。' : 'Device online.',
+  deviceOffline: zh ? '设备离线或未填写地址。' : 'Device offline or address missing.',
+  specGray: '480 × 800 · 4级灰阶',
+  specBmp: '480 × 800 · 1-bit',
+  specPng: '480 × 800 · PNG',
+  dlBmp: zh ? '下载 BMP' : 'Download BMP',
+  dlPng: zh ? '下载 PNG' : 'Download PNG',
+  zh,
+};
+
+const L = {
+  bgTitle: zh ? '背景' : 'Background',
+  dropMain: zh ? '拖入一张照片，或' : 'Drop a photo, or',
+  pick: zh ? '选择图片' : 'choose an image',
+  clear: zh ? '清除' : 'Clear',
+  noBg: zh ? '不选图则为纯白底，同样能叠文字。' : 'No image = clean paper background; text still overlays.',
+  styleTitle: zh ? '叠加样式' : 'Overlay style',
+  style: zh ? '样式' : 'Style',
+  styleClock: zh ? '大时钟 + 日期' : 'Big clock + date',
+  styleQuote: zh ? '引言 / 标题' : 'Quote / title',
+  styleMinimal: zh ? '极简角标' : 'Minimal label',
+  styleNone: zh ? '仅图片（无文字）' : 'Image only (no text)',
+  title: zh ? '主文字' : 'Title',
+  titlePh: zh ? '如：早安 / 一句话' : 'e.g. Good morning',
+  sub: zh ? '副文字 / 署名' : 'Subtitle / attribution',
+  subPh: zh ? '如：作者、出处' : 'e.g. author, source',
+  align: zh ? '对齐' : 'Alignment',
+  alignL: zh ? '左' : 'Left',
+  alignC: zh ? '居中' : 'Center',
+  alignR: zh ? '右' : 'Right',
+  vpos: zh ? '文字高度' : 'Text height',
+  showTime: zh ? '显示时间' : 'Show the time',
+  time: zh ? '时间（静态）' : 'Time (static)',
+  date: zh ? '日期（静态）' : 'Date (static)',
+  fillNow: zh ? '填入此刻' : 'Fill with now',
+  clockNote: zh
+    ? '壁纸是静态图片：固件锁屏原样显示这张 BMP、不会叠实时时钟，且 OnePage C61 无 RTC。下面的时间/日期会被“焊死”进图里、在设备上不会走动。'
+    : 'A wallpaper is a static image: the firmware sleep screen shows this BMP verbatim and never overlays a live clock, and the OnePage C61 has no RTC. The time/date below are baked into the image and won’t advance on the device.',
+  scrim: zh ? '文字底衬（压暗保证可读）' : 'Scrim behind text (dim for legibility)',
+  font: zh ? '字体' : 'Typeface',
+  frameTitle: zh ? '取景与色调' : 'Framing & tone',
+  zoom: zh ? '缩放' : 'Zoom',
+  posX: zh ? '左右' : 'Horizontal',
+  posY: zh ? '上下' : 'Vertical',
+  brightness: zh ? '亮度' : 'Brightness',
+  contrast: zh ? '对比度' : 'Contrast',
+  dither: zh ? '抖动' : 'Dither',
+  ditherFS: 'Floyd–Steinberg',
+  ditherBayer: 'Bayer',
+  ditherNone: zh ? '硬阈值' : 'Hard threshold',
+  reset: zh ? '重置取景' : 'Reset framing',
+  formatTitle: zh ? '导出格式' : 'Export format',
+  bmpHint: zh ? '黑白位图，任意固件可显示。' : 'True black-and-white; shows on any firmware.',
+  grayHint: zh ? '四档灰，照片更自然（需固件四灰管线）。' : 'Four grays (needs the 4-gray firmware path).',
+  pngHint: zh ? '完整灰度 PNG。' : 'Full grayscale PNG.',
+  deviceLabel: zh ? '设备地址' : 'Device address',
+  destLabel: zh ? '保存目录' : 'Save folder',
+  probeBtn: zh ? '探测' : 'Probe',
+  downloadBtn: zh ? '下载 BMP' : 'Download BMP',
+  pushBtn: zh ? '推送到设备' : 'Push to device',
+  footNote: zh
+    ? '导出的 BMP 与卡片工坊同格式，放进 SD 卡 /images 即可用图片浏览器当作锁屏/壁纸查看。'
+    : 'The exported BMP matches the Card Studio format — drop it in the SD card’s /images folder.',
+};
+---
+
+<section class="wp py-6 sm:py-8" data-wallpaper={JSON.stringify({ strings })}>
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div class="max-w-xl">
+        {/* Background */}
+        <h2 class="wp-h2">{L.bgTitle}</h2>
+        <div id="wpDrop" class="wp-drop" tabindex="0" role="button">
+          <p class="wp-drop-main"><span id="wpPick" class="wp-link">{L.pick}</span> {L.noBg}</p>
+          <span id="wpFileName" class="wp-filename"></span>
+        </div>
+        <input id="wpFile" type="file" accept="image/*" class="hidden" />
+        <button id="wpClear" type="button" class="wp-btn wp-btn-ghost mt-2">{L.clear}</button>
+
+        {/* Overlay */}
+        <h2 class="wp-h2">{L.styleTitle}</h2>
+        <div class="wp-grid">
+          <div class="wp-field">
+            <span class="wp-flabel">{L.style}</span>
+            <select id="wpStyle" class="wp-control">
+              <option value="clock">{L.styleClock}</option>
+              <option value="quote">{L.styleQuote}</option>
+              <option value="minimal">{L.styleMinimal}</option>
+              <option value="none">{L.styleNone}</option>
+            </select>
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.align}</span>
+            <select id="wpAlign" class="wp-control">
+              <option value="left">{L.alignL}</option>
+              <option value="center" selected>{L.alignC}</option>
+              <option value="right">{L.alignR}</option>
+            </select>
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.font}</span>
+            <select id="wpFont" class="wp-control">
+              {FONT_OPTIONS.map((f) => <option value={f.id}>{zh ? f.label.zh : f.label.en}</option>)}
+            </select>
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.vpos} <em class="wp-num">28%</em></span>
+            <input id="wpVPos" type="range" min="8" max="92" step="1" value="28" class="wp-range" />
+          </div>
+        </div>
+
+        <div id="wpTextFields" class="mt-4 space-y-4">
+          <div class="wp-field">
+            <span class="wp-flabel">{L.time}</span>
+            <div class="flex items-center gap-2">
+              <input id="wpTime" type="text" maxlength="10" class="wp-control flex-1" />
+              <button id="wpNow" type="button" class="wp-btn wp-btn-ghost shrink-0">{L.fillNow}</button>
+            </div>
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.date}</span>
+            <input id="wpDate" type="text" class="wp-control" />
+          </div>
+          <p class="text-xs/5 text-ink/50">{L.clockNote}</p>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.title}</span>
+            <input id="wpTitle" type="text" placeholder={L.titlePh} class="wp-control" />
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.sub}</span>
+            <input id="wpSub" type="text" placeholder={L.subPh} class="wp-control" />
+          </div>
+          <div class="flex flex-wrap gap-x-6 gap-y-2">
+            <label class="wp-check"><input id="wpShowTime" type="checkbox" checked /><span>{L.showTime}</span></label>
+            <label class="wp-check"><input id="wpScrim" type="checkbox" checked /><span>{L.scrim}</span></label>
+          </div>
+        </div>
+
+        {/* Framing & tone */}
+        <h2 class="wp-h2">{L.frameTitle}</h2>
+        <div class="wp-grid">
+          <div class="wp-field">
+            <span class="wp-flabel">{L.zoom} <em id="wpZoomVal" class="wp-num">100%</em></span>
+            <input id="wpZoom" type="range" min="100" max="400" step="1" value="100" class="wp-range" />
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.posX}</span>
+            <input id="wpX" type="range" min="-400" max="400" step="1" value="0" class="wp-range" />
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.posY}</span>
+            <input id="wpY" type="range" min="-600" max="600" step="1" value="0" class="wp-range" />
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.brightness} <em id="wpBrightVal" class="wp-num">0</em></span>
+            <input id="wpBright" type="range" min="-100" max="100" step="1" value="0" class="wp-range" />
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.contrast} <em id="wpContrastVal" class="wp-num">0</em></span>
+            <input id="wpContrast" type="range" min="-100" max="100" step="1" value="0" class="wp-range" />
+          </div>
+          <div class="wp-field">
+            <span class="wp-flabel">{L.dither} <span class="wp-tag">1-bit</span></span>
+            <select id="wpDither" class="wp-control">
+              <option value="fs">{L.ditherFS}</option>
+              <option value="bayer">{L.ditherBayer}</option>
+              <option value="none">{L.ditherNone}</option>
+            </select>
+          </div>
+        </div>
+        <button id="wpReset" type="button" class="wp-btn wp-btn-ghost mt-3">{L.reset}</button>
+
+        {/* Format */}
+        <h2 class="wp-h2">{L.formatTitle}</h2>
+        <div class="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="wp-radio">
+            <input type="radio" name="wpFormat" value="bmp" />
+            <span class="wp-radio-body"><span class="wp-radio-title">BMP · 1-bit</span><span class="wp-radio-hint">{L.bmpHint}</span></span>
+          </label>
+          <label class="wp-radio">
+            <input type="radio" name="wpFormat" value="gray" checked />
+            <span class="wp-radio-body"><span class="wp-radio-title">{zh ? 'BMP · 4级灰阶' : 'BMP · 4-level gray'}</span><span class="wp-radio-hint">{L.grayHint}</span></span>
+          </label>
+          <label class="wp-radio">
+            <input type="radio" name="wpFormat" value="png" />
+            <span class="wp-radio-body"><span class="wp-radio-title">PNG</span><span class="wp-radio-hint">{L.pngHint}</span></span>
+          </label>
+        </div>
+
+        {/* Device */}
+        <div class="mt-6">
+          <label class="wp-field">
+            <span class="wp-flabel">{L.deviceLabel}</span>
+            <div class="flex items-center gap-2">
+              <input id="wpDevice" type="text" value="http://192.168.4.1" class="wp-control flex-1" />
+              <button id="wpProbe" type="button" class="wp-btn wp-btn-ghost shrink-0">{L.probeBtn}</button>
+            </div>
+          </label>
+          <label class="wp-field mt-3">
+            <span class="wp-flabel">{L.destLabel}</span>
+            <input id="wpDest" type="text" value="/images" class="wp-control" />
+          </label>
+          <p id="wpDeviceStatus" class="mt-2 font-mono text-xs text-ink/50"></p>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="wpDownload" type="button" class="wp-btn wp-btn-ghost">{L.downloadBtn}</button>
+          <button id="wpPush" type="button" class="wp-btn wp-btn-primary">{L.pushBtn}</button>
+        </div>
+        <p id="wpStatus" class="mt-4 font-mono text-xs text-ink/60">{strings.ready}</p>
+      </div>
+
+      {/* Preview */}
+      <aside class="justify-self-center lg:sticky lg:top-6 lg:self-start">
+        <div class="rounded-[26px] border border-ink/15 bg-white p-3 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.35)]">
+          <div class="overflow-hidden rounded-md ring-1 ring-ink/10">
+            <canvas id="wpCanvas" width="480" height="800" class="wp-canvas block h-auto w-full" aria-label="Wallpaper preview"></canvas>
+          </div>
+        </div>
+        <p id="wpSpec" class="mt-3 text-center font-mono text-[11px] tracking-wide text-ink/45"></p>
+      </aside>
+    </div>
+
+    <p class="mt-12 border-t border-ink/10 pt-4 text-xs/5 text-ink/40">{L.footNote}</p>
+  </div>
+</section>
+
+<style>
+  .wp-h2 {
+    margin-top: 32px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-accent-600);
+  }
+  .wp-h2:first-child {
+    margin-top: 0;
+  }
+  .wp-drop {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    border: 1.5px dashed color-mix(in oklab, var(--color-ink) 22%, transparent);
+    border-radius: 14px;
+    background: var(--color-surface);
+    padding: 22px 20px;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .wp-drop:hover,
+  .wp-drop.dragover {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+  }
+  .wp-drop.has-image {
+    border-style: solid;
+  }
+  .wp-drop-main {
+    font-size: 14px;
+    color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  }
+  .wp-link {
+    color: var(--color-accent-600);
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .wp-filename {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .wp-grid {
+    display: grid;
+    gap: 16px;
+    margin-top: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .wp-flabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .wp-control {
+    width: 100%;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .wp-control:focus {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-500) 25%, transparent);
+  }
+  .wp-range {
+    width: 100%;
+    accent-color: var(--color-accent-500);
+    cursor: pointer;
+  }
+  .wp-num {
+    font-style: normal;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-accent-600);
+  }
+  .wp-tag {
+    margin-left: 6px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-ink) 8%, transparent);
+    padding: 1px 7px;
+    font-size: 9px;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+  .wp-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .wp-btn-ghost {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+  .wp-btn-ghost:hover {
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
+  }
+  .wp-btn-primary {
+    border: 1px solid var(--color-accent-600);
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    font-weight: 600;
+  }
+  .wp-btn-primary:hover {
+    background: var(--color-accent-700);
+    border-color: var(--color-accent-700);
+  }
+  .wp-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+    cursor: pointer;
+  }
+  .wp-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent-600);
+  }
+  .wp-radio {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+    border-radius: 12px;
+    background: var(--color-surface);
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .wp-radio:has(input:checked) {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+  }
+  .wp-radio input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent-600);
+  }
+  .wp-radio-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .wp-radio-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--color-ink);
+  }
+  .wp-radio-hint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  }
+  .wp-canvas {
+    image-rendering: pixelated;
+    cursor: default;
+    touch-action: none;
+  }
+  .wp-canvas.grabbing {
+    cursor: grabbing;
+  }
+</style>
+
+<script>
+  import { initWallpaper } from '../tools/wallpaper';
+
+  const section = document.querySelector('[data-wallpaper]');
+  if (section) {
+    const props = JSON.parse(section.getAttribute('data-wallpaper') || '{}');
+    initWallpaper(props);
+  }
+</script>

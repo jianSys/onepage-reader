@@ -5,7 +5,65 @@
 export const W = 480;
 export const H = 800;
 export const INK = '#111111';
-export const SERIF = "Georgia, 'Times New Roman', 'Songti SC', 'Noto Serif CJK SC', serif";
+
+// Card typefaces are rasterized into the exported BMP on the client — the device
+// just shows pixels, so this is fully WYSIWYG and needs no device-side font.
+// Every draw reads the `SERIF` binding at call time, so switching the font is
+// just mutating this live ES-module export (zero changes to the templates).
+// These stacks deliberately reuse the webfonts the site already loads (Lora,
+// Noto Serif SC, JetBrains Mono) plus Playfair Display, so the cards get real
+// editorial type instead of the old Georgia fallback.
+export const FONT_OPTIONS: { id: string; stack: string; label: Localized }[] = [
+  { id: 'serif', stack: "'Lora', 'Noto Serif SC', Georgia, 'Songti SC', serif", label: { en: 'Serif · Lora', zh: '衬线 · 宋体' } },
+  { id: 'display', stack: "'Playfair Display', 'Noto Serif SC', Georgia, serif", label: { en: 'Display · Playfair', zh: '展示 · 高对比' } },
+  { id: 'sans', stack: "'Helvetica Neue', Arial, 'PingFang SC', 'Noto Sans SC', sans-serif", label: { en: 'Sans', zh: '黑体 · 无衬线' } },
+  { id: 'mono', stack: "'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace", label: { en: 'Mono', zh: '等宽' } },
+  { id: 'kai', stack: "'Kaiti SC', STKaiti, KaiTi, 'Xingkai SC', 'Songti SC', cursive", label: { en: 'Kai · brush', zh: '楷体' } },
+];
+
+export let SERIF = FONT_OPTIONS[0].stack;
+
+/** Switch the shared card font by option id; unknown ids fall back to serif. */
+export function setCardFont(id: string) {
+  const f = FONT_OPTIONS.find((o) => o.id === id);
+  SERIF = f ? f.stack : FONT_OPTIONS[0].stack;
+}
+
+// Fixed stacks for the "designed" micro-typography (tracked uppercase labels,
+// small captions). Independent of the user's body-font choice so every card
+// keeps the same editorial chrome — this is what reads as "carefully set".
+export const UI_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace";
+export const UI_SANS = "'Helvetica Neue', Arial, 'PingFang SC', 'Noto Sans SC', sans-serif";
+
+// Draw `img` into the box (x,y,boxW,boxH) as a cover crop honoring an ImgFit.
+// With no fit (or zoom=1, ox=oy=0.5) this is exactly the old centered cover.
+export function drawImageFitted(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  boxW: number,
+  boxH: number,
+  fit?: ImgFit,
+): void {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const cover = Math.max(boxW / iw, boxH / ih);
+  const scale = cover * (fit?.zoom ?? 1);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const ox = fit?.ox ?? 0.5;
+  const oy = fit?.oy ?? 0.5;
+  const dx = x - (dw - boxW) * ox;
+  const dy = y - (dh - boxH) * oy;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, boxW, boxH);
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
+}
 
 // The read-only view a draw function needs. studio.ts's State satisfies this shape.
 export interface CardView {
@@ -14,8 +72,22 @@ export interface CardView {
   items: string[];
   lang: string;
   weather?: WeatherData;
-  /** Uploaded image for the photo template (null until the user picks one). */
+  /** Uploaded image for templates that declare an `image` field (null until picked). */
   image?: HTMLImageElement | null;
+  /** Pan / zoom applied when fitting the uploaded image into its frame. */
+  imgFit?: ImgFit;
+  /** All form-field values keyed by field key (extra fields read from here). */
+  values?: Record<string, string | boolean>;
+}
+
+// How an uploaded image sits in its frame: `zoom` >= 1 multiplies the cover-fit
+// scale; `ox`/`oy` in [0,1] slide the image within the overflow the zoom creates
+// (0.5 = centered). Default = classic centered cover crop, so templates that
+// ignore it render exactly as before.
+export interface ImgFit {
+  zoom: number;
+  ox: number;
+  oy: number;
 }
 
 export interface WeatherData {
@@ -33,10 +105,39 @@ export type CategoryId =
   | 'data'
   | 'photo'
   | 'office'
+  | 'travel'
+  | 'transit'
   | 'plan'
   | 'ink'
+  | 'nature'
+  | 'art'
   | 'poster'
-  | 'astro';
+  | 'music'
+  | 'astro'
+  | 'divination'
+  | 'puzzle';
+
+// A single editor control declared by a template. Bilingual labels live here so
+// the form is fully data-driven — the editor renders any `fields` array generically.
+export type FieldType = 'text' | 'textarea' | 'date' | 'select' | 'checkbox' | 'image';
+
+export interface Localized {
+  en: string;
+  zh: string;
+}
+
+export interface CardField {
+  key: string;
+  type: FieldType;
+  label: Localized;
+  placeholder?: Localized;
+  /** Mirror this field's value into the legacy CardView slot (content/sub/items). */
+  role?: 'content' | 'sub' | 'items';
+  /** For `select`: the dropdown options. */
+  options?: { value: string; label: Localized }[];
+  /** Only show this field when another field equals a given value. */
+  showWhen?: { key: string; equals: string | boolean };
+}
 
 export interface TemplateDef {
   id: string;
@@ -46,6 +147,9 @@ export interface TemplateDef {
   items?: boolean;
   /** Live templates (clock/date) re-render every second while selected. */
   live?: boolean;
+  /** Custom editor fields. When omitted, the editor falls back to the legacy
+   *  content / sub / (items) trio driven by `items`. */
+  fields?: CardField[];
 }
 
 // ── Text helpers ────────────────────────────────────────────────────────────
@@ -254,6 +358,50 @@ export function centeredText(ctx: CanvasRenderingContext2D, sizePx: number, y: n
   ctx.textAlign = 'center';
   ctx.fillText(text, W / 2, y);
   ctx.textAlign = 'left';
+}
+
+// Draw text with manual letter-spacing. Works on every browser (canvas has no
+// reliable letterSpacing across engines), and measures per-glyph so CJK and
+// Latin both track evenly. Returns the total advance width. `align` anchors the
+// whole run at x.
+export function drawTracked(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  spacing: number,
+  align: 'left' | 'center' | 'right' = 'left',
+): number {
+  const chars = Array.from(text);
+  const widths = chars.map((c) => ctx.measureText(c).width);
+  const total = widths.reduce((a, b) => a + b, 0) + spacing * Math.max(0, chars.length - 1);
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  const prev = ctx.textAlign;
+  ctx.textAlign = 'left';
+  chars.forEach((c, i) => {
+    ctx.fillText(c, cx, y);
+    cx += widths[i] + spacing;
+  });
+  ctx.textAlign = prev;
+  return total;
+}
+
+// A small tracked, uppercase editorial label — the "NOW READING · 正在读" chrome
+// that gives the cards their designed feel. Mono by default; pass sans for a
+// lighter caption. Color defaults to a muted ink so it sits behind the hero text.
+export function label(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  opts: { size?: number; tracking?: number; color?: string; align?: 'left' | 'center' | 'right'; sans?: boolean } = {},
+): void {
+  const size = opts.size ?? 17;
+  const tracking = opts.tracking ?? size * 0.2;
+  ctx.fillStyle = opts.color ?? 'rgba(17,17,17,0.6)';
+  ctx.font = `500 ${size}px ${opts.sans ? UI_SANS : UI_MONO}`;
+  drawTracked(ctx, text.toUpperCase(), x, y, tracking, opts.align ?? 'left');
+  ctx.fillStyle = INK;
 }
 
 // Draw a run of CJK glyphs top-to-bottom in one column (classical vertical

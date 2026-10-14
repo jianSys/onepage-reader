@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Nav from '../../components/Nav.astro';
+import ToolShell from '../../components/ToolShell.astro';
+import ImageTool from '../../components/ImageTool.astro';
+import Footer from '../../components/Footer.astro';
+import { ui, localizedPath } from '../../i18n/ui';
+
+const lang = 'zh';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="图片转 BMP — 壹頁 · OnePage"
+  description="把任意照片变成 480×800 墨水屏位图 —— 1-bit 抖动或 4 级灰阶，可直接放进 SD 卡或通过 Wi-Fi 推送到设备。全部在你的浏览器里完成。"
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.images.name}
+      title={t.items.images.name}
+      lede={t.items.images.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <ImageTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>
