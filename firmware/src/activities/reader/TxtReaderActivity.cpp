@@ -259,10 +259,25 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
         break;
       }
 
-      // Find break point
-      size_t breakPos = line.length();
-      while (breakPos > 0 && renderer.getTextAdvanceX(cachedFontId, line.substr(0, breakPos).c_str(),
-                                                      EpdFontFamily::REGULAR) > viewportWidth) {
+      // Find break point. Measure the prefix width in place (temporarily
+      // NUL-terminating then restoring) instead of line.substr(0, breakPos)
+      // on every step. The measured byte sequence is identical to substr
+      // (both end at a '\0' at breakPos), but this removes a per-iteration
+      // heap allocation from the page-turn hot path.
+      const size_t lineLen = line.length();
+      auto prefixWidth = [&](size_t n) -> int {
+        if (n >= lineLen) {
+          return renderer.getTextAdvanceX(cachedFontId, line.c_str(), EpdFontFamily::REGULAR);
+        }
+        const char saved = line[n];
+        line[n] = '\0';
+        const int w = renderer.getTextAdvanceX(cachedFontId, line.c_str(), EpdFontFamily::REGULAR);
+        line[n] = saved;
+        return w;
+      };
+
+      size_t breakPos = lineLen;
+      while (breakPos > 0 && prefixWidth(breakPos) > viewportWidth) {
         // Try to break at space
         size_t spacePos = line.rfind(' ', breakPos - 1);
         if (spacePos != std::string::npos && spacePos > 0) {
