@@ -30,6 +30,17 @@ class Epub {
   // CSS files
   std::vector<std::string> cssFiles;
 
+  // Memoizes the SD-backed spine lookups used by getBookSize()/calculateProgress().
+  // Their values are immutable for a loaded book, but each getter otherwise seeks
+  // the spine LUT on SD (~3 random reads per page turn just for the progress %).
+  // The per-chapter sizes are re-read only when currentSpineIndex changes. These
+  // are mutable because the getters are const. Reset at the top of load().
+  mutable size_t cachedBookSize = 0;
+  mutable bool bookSizeCached = false;
+  mutable int cachedProgressSpineIndex = -1;
+  mutable size_t cachedPrevCumulative = 0;  // cumulativeSize(index-1)
+  mutable size_t cachedCurCumulative = 0;   // cumulativeSize(index)
+
   bool findContentOpfFile(std::string* contentOpfFile) const;
   bool parseContentOpf(BookMetadataCache::BookMetadata& bookMetadata, bool writeSpineEntries = true);
   bool parseTocNcxFile() const;

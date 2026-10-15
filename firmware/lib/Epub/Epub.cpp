@@ -365,6 +365,11 @@ void Epub::parseCssFiles() const {
 bool Epub::load(const bool buildIfMissing, const bool skipLoadingCss) {
   LOG_DBG("EBP", "Loading ePub: %s", filepath.c_str());
 
+  // Invalidate the progress memo: this is a fresh/reloaded book whose spine sizes differ.
+  bookSizeCached = false;
+  cachedBookSize = 0;
+  cachedProgressSpineIndex = -1;
+
   // Initialize spine/TOC cache
   bookMetadataCache.reset(new BookMetadataCache(cachePath));
   // Always create CssParser - needed for inline style parsing even without CSS files
@@ -852,10 +857,13 @@ int Epub::getSpineIndexForTocIndex(const int tocIndex) const {
 int Epub::getTocIndexForSpineIndex(const int spineIndex) const { return getSpineItem(spineIndex).tocIndex; }
 
 size_t Epub::getBookSize() const {
+  if (bookSizeCached) return cachedBookSize;
   if (!bookMetadataCache || !bookMetadataCache->isLoaded() || bookMetadataCache->getSpineCount() == 0) {
-    return 0;
+    return 0;  // not loaded yet - don't cache so it computes once the cache is up
   }
-  return getCumulativeSpineItemSize(getSpineItemsCount() - 1);
+  cachedBookSize = getCumulativeSpineItemSize(getSpineItemsCount() - 1);
+  bookSizeCached = true;
+  return cachedBookSize;
 }
 
 int Epub::getSpineIndexForTextReference() const {
@@ -888,12 +896,19 @@ int Epub::getSpineIndexForTextReference() const {
 
 // Calculate progress in book (returns 0.0-1.0)
 float Epub::calculateProgress(const int currentSpineIndex, const float currentSpineRead) const {
-  const size_t bookSize = getBookSize();
+  const size_t bookSize = getBookSize();  // memoized across page turns
   if (bookSize == 0) {
     return 0.0f;
   }
-  const size_t prevChapterSize = (currentSpineIndex >= 1) ? getCumulativeSpineItemSize(currentSpineIndex - 1) : 0;
-  const size_t curChapterSize = getCumulativeSpineItemSize(currentSpineIndex) - prevChapterSize;
+  // Re-read the two spine LUT entries only when the chapter changes; page turns
+  // within a chapter reuse the cached cumulative sizes (was 2 SD reads per page).
+  if (currentSpineIndex != cachedProgressSpineIndex) {
+    cachedCurCumulative = getCumulativeSpineItemSize(currentSpineIndex);
+    cachedPrevCumulative = (currentSpineIndex >= 1) ? getCumulativeSpineItemSize(currentSpineIndex - 1) : 0;
+    cachedProgressSpineIndex = currentSpineIndex;
+  }
+  const size_t prevChapterSize = cachedPrevCumulative;
+  const size_t curChapterSize = cachedCurCumulative - prevChapterSize;
   const float sectionProgSize = currentSpineRead * static_cast<float>(curChapterSize);
   const float totalProgress = static_cast<float>(prevChapterSize) + sectionProgSize;
   return totalProgress / static_cast<float>(bookSize);
