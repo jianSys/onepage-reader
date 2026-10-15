@@ -584,6 +584,53 @@ function drawReading(ctx: CanvasRenderingContext2D, v: CardView) {
   }
 }
 
+// ── Reading dashboard: cumulative reading stats pulled from the device ──────
+// Sibling of `status`/`reading`, but its content/sub/items can be auto-filled
+// from the device's /api/stats endpoint (see studio.ts fetchLive). `content` is
+// the hero — total reading time; `items` are "key : value" stat rows.
+function drawDashboard(ctx: CanvasRenderingContext2D, s: CardView) {
+  const zh = isZh(s);
+  label(ctx, zh ? '阅读报告 · Reading Report' : 'Reading Report', W / 2, 104, { size: 15, align: 'center' });
+  const big = s.content || (zh ? '0 分钟' : '0 min');
+  ctx.fillStyle = INK;
+  ctx.textAlign = 'center';
+  let size = 188;
+  ctx.font = `${size}px ${SERIF}`;
+  while (ctx.measureText(big).width > W - 112 && size > 56) {
+    size -= 10;
+    ctx.font = `${size}px ${SERIF}`;
+  }
+  ctx.fillText(big, W / 2, 300 + size * 0.2);
+  if (s.sub) {
+    ctx.font = `24px ${SERIF}`;
+    ctx.fillStyle = 'rgba(17,17,17,0.6)';
+    ctx.fillText(s.sub, W / 2, 376);
+    ctx.fillStyle = INK;
+  }
+  ctx.textAlign = 'left';
+  headerRule(ctx, 424);
+  const rows = s.items.filter(Boolean).slice(0, 6);
+  let y = 482;
+  for (const row of rows) {
+    const [k, v] = row.split(/[:：]/, 2);
+    ctx.fillStyle = INK;
+    ctx.font = `26px ${SERIF}`;
+    ctx.fillText((k || '').trim(), 56, y);
+    if (v !== undefined) {
+      ctx.textAlign = 'right';
+      ctx.fillText(v.trim(), W - 56, y);
+      ctx.textAlign = 'left';
+    }
+    ctx.strokeStyle = 'rgba(17,17,17,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(56, y + 14);
+    ctx.lineTo(W - 56, y + 14);
+    ctx.stroke();
+    y += 46;
+  }
+}
+
 // ── Bookshelf: standing spines on a plank (the visual sibling of `reading`) ──
 // One book per item line. Spines cycle through a fixed gray-tone palette (so a
 // grayscale export shows real depth, like the reference), widths & heights come
@@ -2653,6 +2700,7 @@ export const TEMPLATES: TemplateDef[] = [
   { id: 'weather', category: 'data', draw: drawWeather },
   { id: 'status', category: 'data', draw: drawStatus, items: true },
   { id: 'reading', category: 'data', draw: drawReading, items: true },
+  { id: 'dashboard', category: 'data', draw: drawDashboard, items: true },
   { id: 'shelf', category: 'data', draw: drawShelf, items: true },
   { id: 'moon', category: 'data', draw: drawMoon },
   { id: 'sun', category: 'data', draw: drawSun, items: true },
@@ -2960,6 +3008,7 @@ export const SEEDS: Record<'zh' | 'en', Record<string, { content?: string; sub?:
     weather: { content: '', sub: '上海' },
     status: { content: '82%', sub: '本周目标', items: ['连续天数 : 12', '今日页数 : 48', '剩余 : 7 页'] },
     reading: { content: '《瓦尔登湖》', sub: '梭罗', items: ['进度 : 62%', '已读 : 180 页', '剩余 : 110 页'] },
+    dashboard: { content: '12 小时 40 分', sub: '累计阅读 · 填设备地址后点 Fetch 拉取', items: ['阅读会话 : 37 次', '累计翻页 : 1280 页', '最近书名 : 《瓦尔登湖》'] },
     shelf: { content: '我的书房', sub: '2026 秋 · 常备与在读', items: ['瓦尔登湖', '百年孤独', '人类简史', '活着', '三体', '局外人', '月亮与六便士', '刀锋'] },
     moon: { content: '', sub: '' },
     greet: { content: '', sub: '' },
@@ -3014,6 +3063,7 @@ export const SEEDS: Record<'zh' | 'en', Record<string, { content?: string; sub?:
     weather: { content: '', sub: 'Shanghai' },
     status: { content: '82%', sub: 'This week', items: ['Streak : 12 days', 'Pages today : 48', 'Remaining : 7'] },
     reading: { content: 'Walden', sub: 'Henry David Thoreau', items: ['Progress : 62%', 'Read : 180 pages', 'Left : 110 pages'] },
+    dashboard: { content: '12h 40m', sub: 'Total reading · enter a device URL, then Fetch', items: ['Sessions : 37', 'Page turns : 1280', 'Last book : Walden'] },
     shelf: { content: 'My Study', sub: 'Autumn 2026 · on the shelf', items: ['Walden', 'One Hundred Years of Solitude', 'Sapiens', 'To Live', 'The Three-Body Problem', 'The Stranger', 'The Moon and Sixpence', 'The Razor\'s Edge'] },
     moon: { content: '', sub: '' },
     greet: { content: '', sub: '' },

@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "CrossPointSettings.h"
+#include "CrossPointState.h"
 #include "FontInstaller.h"
 #include "OpdsServerStore.h"
 #include "SdCardFontSystem.h"
@@ -138,6 +139,7 @@ void CrossPointWebServer::begin() {
   server->on("/js/jszip.min.js", HTTP_GET, [this] { handleJszip(); });
 
   server->on("/api/status", HTTP_GET, [this] { handleStatus(); });
+  server->on("/api/stats", HTTP_GET, [this] { handleStats(); });
   server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });
   server->on("/download", HTTP_GET, [this] { handleDownload(); });
 
@@ -375,6 +377,24 @@ void CrossPointWebServer::handleStatus() const {
   doc["freeHeap"] = ESP.getFreeHeap();
   doc["uptime"] = millis() / 1000;
   doc["device"] = gpio.deviceIsX3() ? "X3" : "X4";
+
+  String json;
+  serializeJson(doc, json);
+  server->send(200, "application/json", json);
+}
+
+// Reading stats exposed to the external web tool (Card Studio "dashboard" card).
+// CORS header is permissive because the device is already on an open AP / LAN
+// with no auth, and the browser cannot read the JSON without it. Kept as a
+// passive GET — no polling on the firmware side.
+void CrossPointWebServer::handleStats() const {
+  server->sendHeader("Access-Control-Allow-Origin", "*");
+
+  JsonDocument doc;
+  doc["totalReadingSeconds"] = APP_STATE.totalReadingSeconds;
+  doc["totalPagesTurns"] = APP_STATE.totalPagesTurns;
+  doc["readingSessions"] = APP_STATE.readingSessions;
+  doc["uptime"] = millis() / 1000;
 
   String json;
   serializeJson(doc, json);

@@ -31,6 +31,9 @@ void TxtReaderActivity::onEnter() {
     return;
   }
 
+  // Begin a reading session for stats (see CrossPointState). Committed in onExit().
+  APP_STATE.startReadingSession();
+
   ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
 
   txt->setupCacheDir();
@@ -54,6 +57,7 @@ void TxtReaderActivity::onExit() {
 
   pageOffsets.clear();
   currentPageLines.clear();
+  APP_STATE.commitReadingSession();
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();
   txt.reset();
@@ -80,10 +84,12 @@ void TxtReaderActivity::loop() {
 
   if (prevTriggered && currentPage > 0) {
     currentPage--;
+    APP_STATE.bumpPageTurn();
     requestUpdate();
   } else if (nextTriggered) {
     if (currentPage < totalPages - 1) {
       currentPage++;
+      APP_STATE.bumpPageTurn();
       requestUpdate();
     } else {
       onGoHome();

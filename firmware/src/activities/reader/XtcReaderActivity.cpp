@@ -31,6 +31,9 @@ void XtcReaderActivity::onEnter() {
     return;
   }
 
+  // Begin a reading session for stats (see CrossPointState). Committed in onExit().
+  APP_STATE.startReadingSession();
+
   xtc->setupCacheDir();
 
   // Load saved progress
@@ -48,6 +51,7 @@ void XtcReaderActivity::onEnter() {
 void XtcReaderActivity::onExit() {
   Activity::onExit();
 
+  APP_STATE.commitReadingSession();
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();
   xtc.reset();
@@ -106,12 +110,14 @@ void XtcReaderActivity::loop() {
     } else {
       currentPage = 0;
     }
+    APP_STATE.bumpPageTurn();
     requestUpdate();
   } else if (nextTriggered) {
     currentPage += skipAmount;
     if (currentPage >= xtc->getPageCount()) {
       currentPage = xtc->getPageCount();  // Allow showing "End of book"
     }
+    APP_STATE.bumpPageTurn();
     requestUpdate();
   }
 }

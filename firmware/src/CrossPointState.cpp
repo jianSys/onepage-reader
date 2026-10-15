@@ -1,5 +1,6 @@
 #include "CrossPointState.h"
 
+#include <Arduino.h>
 #include <HalStorage.h>
 #include <JsonSettingsIO.h>
 #include <Logging.h>
@@ -29,6 +30,25 @@ void CrossPointState::pushRecentSleep(uint16_t idx) {
   recentSleepImages[recentSleepPos] = idx;
   recentSleepPos = (recentSleepPos + 1) % SLEEP_RECENT_COUNT;
   if (recentSleepFill < SLEEP_RECENT_COUNT) recentSleepFill++;
+}
+
+void CrossPointState::startReadingSession() {
+  sessionStartMillis = millis();
+  sessionTurns = 0;
+  sessionActive = true;
+}
+
+void CrossPointState::bumpPageTurn() {
+  if (sessionActive) sessionTurns++;
+}
+
+void CrossPointState::commitReadingSession() {
+  if (!sessionActive) return;
+  totalReadingSeconds += static_cast<uint32_t>((millis() - sessionStartMillis) / 1000);
+  totalPagesTurns += sessionTurns;
+  readingSessions++;
+  sessionActive = false;
+  sessionTurns = 0;
 }
 
 bool CrossPointState::saveToFile() const {

@@ -156,6 +156,9 @@ void EpubReaderActivity::onEnter() {
     return;
   }
 
+  // Begin a reading session for stats (see CrossPointState). Committed in onExit().
+  APP_STATE.startReadingSession();
+
   // Configure screen orientation based on settings
   // NOTE: This affects layout math and must be applied before any render calls.
   ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
@@ -210,6 +213,7 @@ void EpubReaderActivity::onExit() {
   // Reset orientation back to portrait for the rest of the UI
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
+  APP_STATE.commitReadingSession();
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();
 
@@ -790,6 +794,7 @@ void EpubReaderActivity::pageTurn(bool isForwardTurn) {
       }
     }
   }
+  APP_STATE.bumpPageTurn();
   lastPageTurnTime = millis();
   requestUpdate();
 }

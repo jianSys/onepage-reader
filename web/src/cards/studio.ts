@@ -556,6 +556,24 @@ export function initCardStudio(props: StudioProps) {
         }));
         state.weather = { place, temp: j.current.temperature_2m, code: j.current.weather_code, days } as WeatherData;
         setFieldValue('sub', place);
+      } else if (state.template === 'dashboard') {
+        // Pull cumulative reading stats from the device. /api/stats sends a
+        // permissive CORS header (unlike /api/status), so we can read the body.
+        const base = deviceBase();
+        if (!base) throw new Error('no device address');
+        const j = await (await fetch(`${base}/api/stats`)).json();
+        const secs = Math.max(0, Math.floor(j.totalReadingSeconds || 0));
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const big = h > 0 ? (zh ? `${h} 小时 ${m} 分` : `${h}h ${m}m`) : zh ? `${m} 分钟` : `${m} min`;
+        const sessions = Math.floor(j.readingSessions || 0);
+        const turns = Math.floor(j.totalPagesTurns || 0);
+        setFieldValue('content', big);
+        setFieldValue('sub', zh ? '累计阅读时长' : 'Total reading time');
+        setFieldValue(
+          'items',
+          zh ? `阅读会话 : ${sessions} 次\n累计翻页 : ${turns} 页` : `Sessions : ${sessions}\nPage turns : ${turns}`,
+        );
       } else {
         setStatus(T.ready);
         return;
