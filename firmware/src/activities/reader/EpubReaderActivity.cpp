@@ -864,9 +864,20 @@ void EpubReaderActivity::render(RenderLock&& lock) {
                                   SETTINGS.imageRendering, SETTINGS.focusReadingEnabled)) {
       LOG_DBG("ERS", "Cache not found, building...");
 
-      GUI.drawPopup(renderer, tr(STR_INDEXING));
-
-      const auto popupFn = [this]() { GUI.drawPopup(renderer, tr(STR_INDEXING)); };
+      const Rect popupRect = GUI.drawPopup(renderer, tr(STR_INDEXING));
+      int lastIndexingPercent = -1;
+      unsigned long lastIndexingMs = millis();
+      // The parser reports chapter-indexing progress (bytes consumed) for chapters
+      // over its popup threshold. Throttle redraws to ~4/sec so a fast chapter
+      // isn't slowed by e-ink refresh overhead, mirroring the TXT indexer.
+      const auto popupFn = [&](const int percent) {
+        const unsigned long now = millis();
+        if (percent > lastIndexingPercent && (now - lastIndexingMs) >= 250) {
+          GUI.fillPopupProgress(renderer, popupRect, percent);
+          lastIndexingPercent = percent;
+          lastIndexingMs = now;
+        }
+      };
 
       if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
                                       SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment, viewportWidth,

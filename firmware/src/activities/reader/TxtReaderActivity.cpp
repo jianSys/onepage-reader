@@ -148,7 +148,14 @@ void TxtReaderActivity::buildPageIndex() {
 
   LOG_DBG("TRS", "Building page index for %zu bytes...", fileSize);
 
-  GUI.drawPopup(renderer, tr(STR_INDEXING));
+  // Show a progress popup. drawPopup paints and displays the frame once and
+  // returns its rect; fillPopupProgress then only redraws the bar region and
+  // does a FAST_REFRESH. We throttle to ~4 updates/sec so a small book isn't
+  // slowed by refresh overhead and a large one doesn't build up ghosting, while
+  // still giving live feedback during the whole-file layout pass.
+  const Rect popupRect = GUI.drawPopup(renderer, tr(STR_INDEXING));
+  int lastPercent = -1;
+  unsigned long lastProgressMs = millis();
 
   while (offset < fileSize) {
     std::vector<std::string> tempLines;
@@ -172,6 +179,19 @@ void TxtReaderActivity::buildPageIndex() {
     if (pageOffsets.size() % 20 == 0) {
       vTaskDelay(1);
     }
+
+    // Update the progress bar at most every 250ms and only as it advances.
+    const int percent = fileSize ? static_cast<int>(static_cast<uint64_t>(offset) * 100 / fileSize) : 100;
+    const unsigned long now = millis();
+    if (percent > lastPercent && (now - lastProgressMs) >= 250) {
+      GUI.fillPopupProgress(renderer, popupRect, percent);
+      lastPercent = percent;
+      lastProgressMs = now;
+    }
+  }
+
+  if (lastPercent < 100) {
+    GUI.fillPopupProgress(renderer, popupRect, 100);
   }
 
   totalPages = pageOffsets.size();

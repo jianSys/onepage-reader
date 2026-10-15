@@ -1297,9 +1297,11 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
     return false;
   }
 
-  // Get file size to decide whether to show indexing popup.
-  if (popupFn && file.size() >= MIN_SIZE_FOR_POPUP) {
-    popupFn();
+  // Get file size to decide whether to show indexing popup. Progress is driven
+  // from bytes consumed during the streaming parse (page count isn't known upfront).
+  const size_t totalSize = file.size();
+  if (popupFn && totalSize >= MIN_SIZE_FOR_POPUP) {
+    popupFn(0);
   }
 
   XML_SetUserData(parser, this);
@@ -1308,6 +1310,8 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
 
   // Compute the time taken to parse and build pages
   const uint32_t chapterStartTime = millis();
+  size_t consumed = 0;
+  int lastReportedPercent = 0;
   do {
     void* const buf = XML_GetBuffer(parser, PARSE_BUFFER_SIZE);
     if (!buf) {
@@ -1334,6 +1338,16 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
       destroyXmlParser(parser);
       file.close();
       return false;
+    }
+
+    // Report indexing progress from bytes consumed; the activity throttles redraws.
+    consumed += len;
+    if (popupFn && totalSize >= MIN_SIZE_FOR_POPUP) {
+      const int percent = static_cast<int>(consumed * 100 / totalSize);
+      if (percent > lastReportedPercent) {
+        popupFn(percent);
+        lastReportedPercent = percent;
+      }
     }
   } while (!done);
   LOG_DBG("EHP", "Time to parse and build pages: %lu ms", millis() - chapterStartTime);
