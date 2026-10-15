@@ -1375,17 +1375,29 @@ std::string GfxRenderer::truncatedText(const int fontId, const char* text, const
   std::string item = text;
   // U+2026 HORIZONTAL ELLIPSIS (UTF-8: 0xE2 0x80 0xA6)
   const char* ellipsis = "\xe2\x80\xa6";
-  int textWidth = getTextWidth(fontId, item.c_str(), style);
-  if (textWidth <= maxWidth) {
+  if (getTextWidth(fontId, item.c_str(), style) <= maxWidth) {
     // Text fits, return as is
     return item;
   }
 
-  while (!item.empty() && getTextWidth(fontId, (item + ellipsis).c_str(), style) >= maxWidth) {
+  // Shrink until item+ellipsis fits. Reuse one reserved probe buffer instead of
+  // building a fresh (item + ellipsis) std::string on every step -- this is the
+  // most-used UI text-fit primitive (35+ call sites, redrawn per screen/row/page
+  // turn), and the per-iteration allocation was the cost. The bytes handed to
+  // getTextWidth are byte-identical to the old (item + ellipsis).c_str(), so
+  // behavior is unchanged.
+  std::string probe;
+  probe.reserve(item.size() + 8);
+  while (!item.empty()) {
+    probe = item;
+    probe += ellipsis;
+    if (getTextWidth(fontId, probe.c_str(), style) < maxWidth) break;
     utf8RemoveLastChar(item);
   }
 
-  return item.empty() ? ellipsis : item + ellipsis;
+  if (item.empty()) return ellipsis;
+  item += ellipsis;
+  return item;
 }
 
 std::vector<std::string> GfxRenderer::wrappedText(const int fontId, const char* text, const int maxWidth,
