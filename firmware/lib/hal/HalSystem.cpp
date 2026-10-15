@@ -70,14 +70,48 @@ void IRAM_ATTR __wrap_panic_print_backtrace(const void* frame, int core) {
 
 namespace HalSystem {
 
+// Any reset that indicates the previous run ended badly. ESP_RST_PANIC also
+// covers abort()/OOM (the panic handler runs for those), so an explicit
+// ESP_RST_ABORT is not needed. Brownout and the watchdogs are the "mystery
+// reboot" sources a plain panic dump would miss.
+static bool isAbnormalReset() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_PANIC:
+    case ESP_RST_CPU_LOCKUP:
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_BROWNOUT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static const char* resetReasonText() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_PANIC:
+      return "panic";
+    case ESP_RST_CPU_LOCKUP:
+      return "cpu lockup";
+    case ESP_RST_INT_WDT:
+      return "interrupt watchdog";
+    case ESP_RST_TASK_WDT:
+      return "task watchdog";
+    case ESP_RST_BROWNOUT:
+      return "brownout";
+    default:
+      return "unknown";
+  }
+}
+
 void begin() {
   // This is mostly for the first boot, we need to initialize the panic info and logs to empty state
   // If we reboot from a panic state, we want to keep the panic info until we successfully dump it to the SD card, use
   // `clearPanic()` to clear it after dumping
-  if (!isRebootFromPanic()) {
+  if (!isAbnormalReset()) {
     clearPanic();
   } else {
-    // Panic reboot: preserve logs and panic info, but clamp logHead in case the
+    // Abnormal reboot: preserve logs and panic info, but clamp logHead in case the
     // panic occurred before begin() ever ran (e.g. in a static constructor).
     // If logHead was out of range, logMessages is also garbage — clear it so
     // getLastLogs() does not dump corrupt data into the crash report.
@@ -88,13 +122,13 @@ void begin() {
 }
 
 void checkPanic() {
-  if (isRebootFromPanic()) {
+  if (isAbnormalReset()) {
     auto panicInfo = getPanicInfo(true);
     auto file = Storage.open("/crash_report.txt", O_WRITE | O_CREAT | O_TRUNC);
     if (file) {
       file.write(panicInfo.c_str(), panicInfo.size());
       file.close();
-      LOG_INF("SYS", "Dumped panic info to SD card");
+      LOG_INF("SYS", "Dumped crash info to SD card (%s)", resetReasonText());
     } else {
       LOG_ERR("SYS", "Failed to open crash_report.txt for writing");
     }
@@ -116,6 +150,7 @@ std::string getPanicInfo(bool full) {
     std::string info;
 
     info += "CrossPoint version: " CROSSPOINT_VERSION;
+    info += "\n\nReset reason: " + std::string(resetReasonText());
     info += "\n\nPanic reason: " + std::string(panicMessage);
     info += "\n\nLast logs:\n" + getLastLogs();
     info += "\n\nStack memory:\n";

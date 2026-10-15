@@ -12,6 +12,7 @@
 #include <HalTiltSensor.h>
 #include <I18n.h>
 #include <Logging.h>
+#include "SdLog.h"
 #include <SPI.h>
 #include <WiFi.h>
 #include <builtinFonts/all.h>
@@ -275,6 +276,8 @@ void enterDeepSleep(bool fromTimeout = false) {
   }
 #endif
 
+  SdLog::flushToSd();
+
   halTiltSensor.deepSleep();
   display.deepSleep();
   LOG_DBG("MAIN", "Entering deep sleep");
@@ -387,6 +390,10 @@ void setup() {
   HalSystem::checkPanic();
 
   SETTINGS.loadFromFile();
+  // Bring up the SD log mirror after settings are known; init() stays inert if
+  // PSRAM is unavailable. setEnabled is idempotent and cheap to re-call per loop.
+  SdLog::init();
+  SdLog::setEnabled(SETTINGS.sdLoggingEnabled != 0);
 #ifdef ONEPAGE_C61
   // OnePage bringup: force front buttons to a 1:1 layout (physical BACK/CONFIRM/
   // LEFT/RIGHT = logical), overriding any X4-specific mapping carried in a
@@ -585,6 +592,16 @@ void loop() {
     LOG_INF("MEM", "Free: %d bytes, Total: %d bytes, Min Free: %d bytes, MaxAlloc: %d bytes", ESP.getFreeHeap(),
             ESP.getHeapSize(), ESP.getMinFreeHeap(), ESP.getMaxAllocHeap());
     lastMemPrint = millis();
+  }
+
+  // Mirror logs to SD: pick up live toggle changes, and do a throttled flush so
+  // the logging hot path never touches the card (logPrintf only appends to the
+  // PSRAM ring; the slow write happens here / before sleep).
+  SdLog::setEnabled(SETTINGS.sdLoggingEnabled != 0);
+  static unsigned long lastSdLogFlush = 0;
+  if (SdLog::isEnabled() && millis() - lastSdLogFlush >= 5000) {
+    SdLog::flushToSd();
+    lastSdLogFlush = millis();
   }
 
   // Handle incoming serial commands,

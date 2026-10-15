@@ -63,6 +63,13 @@ void clearLastLogs();
 // this returns true so getLastLogs() does not dump corrupt data into crash reports.
 bool sanitizeLogHead();
 
+// Optional out-of-band sink that receives every formatted log line, so the app
+// layer can mirror logs (e.g. to the SD card) without lib/Logging depending on
+// HAL/SD. The sink must be cheap and non-blocking: it runs inside the logging
+// hot path. Register nullptr to detach. Default: no sink.
+typedef void (*LogSinkFn)(const char* line, size_t len);
+void setLogSink(LogSinkFn sink);
+
 class MySerialImpl : public Print {
  public:
   void begin(unsigned long baud) { logSerial.begin(baud); }
