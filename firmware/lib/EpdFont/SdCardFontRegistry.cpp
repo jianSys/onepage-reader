@@ -249,6 +249,26 @@ bool SdCardFontRegistry::discover() {
   return !families_.empty();
 }
 
+bool SdCardFontRegistry::discoverFamily(const char* name) {
+  families_.clear();
+  if (!name || !*name) return false;
+
+  // findFamilyRoot does two Storage.exists() checks (hidden then visible),
+  // no directory walk -- this is the cheap boot-path locator.
+  const char* root = findFamilyRoot(name);
+  if (!root) return false;
+
+  SdCardFontFamilyInfo family;
+  family.name = name;
+  const std::string dirPath = std::string(root) + "/" + name;
+  scanDirectory(dirPath.c_str(), family);
+  if (family.files.empty()) return false;
+
+  families_.push_back(std::move(family));
+  LOG_DBG("SDREG", "Targeted discovery: %s (%d files)", name, static_cast<int>(families_[0].files.size()));
+  return true;
+}
+
 const char* SdCardFontRegistry::findFamilyRoot(const char* familyName) {
   if (!familyName || !*familyName) return nullptr;
   char path[160];

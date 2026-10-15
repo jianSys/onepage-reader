@@ -44,6 +44,12 @@ class SdCardFontRegistry {
   // Scan SD card, populate families_. Returns true if any families found.
   bool discover();
 
+  // Targeted single-family scan for the boot hot path: locate `name`'s root
+  // (2 exists() checks, no directory walk) and scan only that family's dir.
+  // On success families_ holds exactly this one family; returns false (and
+  // leaves families_ empty) if the family isn't installed or has no files.
+  bool discoverFamily(const char* name);
+
   const std::vector<SdCardFontFamilyInfo>& getFamilies() const { return families_; }
   const SdCardFontFamilyInfo* findFamily(const std::string& name) const;
   int getFamilyIndex(const std::string& name) const;

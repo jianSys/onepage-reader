@@ -40,8 +40,10 @@ void SettingsActivity::rebuildSettingsLists() {
   systemSettings.clear();
 
   // Pick up any fonts uploaded/deleted over the web server since the last
-  // reader activity ran — otherwise the font-family picker shows stale list.
-  sdFontSystem.refreshIfDirty();
+  // reader activity ran, and build the full family list on first entry (boot
+  // only targeted-loads the selected family) -- otherwise the font-family
+  // picker shows a stale/incomplete list.
+  sdFontSystem.ensureDiscovered();
 
   for (auto& setting : getSettingsList(&sdFontSystem.registry())) {
     if (setting.category == StrId::STR_NONE_OPT) continue;

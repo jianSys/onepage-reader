@@ -16,8 +16,6 @@ static uint8_t fontSizeEnumFromSettings() {
 }  // namespace
 
 void SdCardFontSystem::begin(GfxRenderer& renderer) {
-  registry_.discover();
-
   // Register this system as the SD font ID resolver in settings.
   // Uses a static trampoline since CrossPointSettings stores a plain function pointer.
   SETTINGS.sdFontIdResolver = [](void* ctx, const char* familyName, uint8_t fontSizeEnum) -> int {
@@ -25,11 +23,13 @@ void SdCardFontSystem::begin(GfxRenderer& renderer) {
   };
   SETTINGS.sdFontResolverCtx = this;
 
-  // If user has a saved SD font selection, load it
+  // Boot hot path: only targeted-load the saved selection (single-family scan),
+  // never a full card walk. Full discovery is deferred to ensureDiscovered(),
+  // called by the font picker / settings UI / web font+settings APIs.
   if (SETTINGS.sdFontFamilyName[0] != '\0') {
-    const auto* family = registry_.findFamily(SETTINGS.sdFontFamilyName);
-    if (family) {
-      if (manager_.loadFamily(*family, renderer, fontSizeEnumFromSettings())) {
+    if (registry_.discoverFamily(SETTINGS.sdFontFamilyName)) {
+      const auto* family = registry_.findFamily(SETTINGS.sdFontFamilyName);
+      if (family && manager_.loadFamily(*family, renderer, fontSizeEnumFromSettings())) {
         LOG_DBG("SDFS", "Loaded SD card font family: %s", SETTINGS.sdFontFamilyName);
       } else {
         LOG_ERR("SDFS", "Failed to load SD font family: %s (clearing)", SETTINGS.sdFontFamilyName);
@@ -41,7 +41,17 @@ void SdCardFontSystem::begin(GfxRenderer& renderer) {
     }
   }
 
-  LOG_DBG("SDFS", "SD font system ready (%d families discovered)", registry_.getFamilyCount());
+  discovered_.store(false, std::memory_order_release);
+  LOG_DBG("SDFS", "SD font system ready (selected family only; full discovery deferred)");
+}
+
+void SdCardFontSystem::ensureDiscovered() {
+  const bool wasDirty = registryDirty_.exchange(false, std::memory_order_acquire);
+  if (discovered_.load(std::memory_order_acquire) && !wasDirty) {
+    return;
+  }
+  registry_.discover();
+  discovered_.store(true, std::memory_order_release);
 }
 
 void SdCardFontSystem::ensureLoaded(GfxRenderer& renderer) {
@@ -53,6 +63,7 @@ void SdCardFontSystem::ensureLoaded(GfxRenderer& renderer) {
   if (registryWasDirty) {
     LOG_DBG("SDFS", "Registry dirty — re-discovering fonts");
     registry_.discover();
+    discovered_.store(true, std::memory_order_release);  // keep ensureDiscovered() in sync
   }
 
   const char* wantedFamily = SETTINGS.sdFontFamilyName;

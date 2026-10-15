@@ -14,7 +14,8 @@ class SdCardFontSystem {
   SdCardFontSystem() = default;
   SdCardFontSystem(const SdCardFontSystem&) = delete;
   SdCardFontSystem& operator=(const SdCardFontSystem&) = delete;
-  /// Discover SD card fonts and load user's saved selection. Call once during setup.
+  /// Load the saved SD font selection via a targeted single-family scan (no
+  /// full card walk) and register the resolver. Call once during setup.
   void begin(GfxRenderer& renderer);
 
   /// Ensure the correct SD font family is loaded for the current settings.
@@ -45,10 +46,17 @@ class SdCardFontSystem {
     }
   }
 
+  /// Ensure the full family list has been discovered. Boot only targeted-loads
+  /// the selected family, so callers that need the complete list (font picker,
+  /// settings UI, web font/settings APIs) call this first. Re-scans only on the
+  /// first call or after the registry is marked dirty (web upload/delete).
+  void ensureDiscovered();
+
  private:
   SdCardFontRegistry registry_;
   SdCardFontManager manager_;
   std::atomic<bool> registryDirty_{false};
+  std::atomic<bool> discovered_{false};
 };
 
 // Global SD card font system instance (defined in main.cpp).

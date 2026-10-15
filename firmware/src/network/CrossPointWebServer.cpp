@@ -1159,6 +1159,7 @@ void CrossPointWebServer::handleGetSettings() const {
   // Pass the SD font registry so the fontFamily setting's enumStringValues
   // includes SD-resident families — otherwise the web API only exposes the
   // three built-in fonts.
+  const_cast<SdCardFontSystem&>(sdFontSystem).ensureDiscovered();
   const auto& settings = getSettingsList(&sdFontSystem.registry());
 
   server->setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -1261,6 +1262,7 @@ void CrossPointWebServer::handlePostSettings() {
     return;
   }
 
+  const_cast<SdCardFontSystem&>(sdFontSystem).ensureDiscovered();
   const auto& settings = getSettingsList(&sdFontSystem.registry());
   int applied = 0;
 
@@ -1849,7 +1851,7 @@ void CrossPointWebServer::handleFontAdvances() const {
 }
 void CrossPointWebServer::handleFontList() const {
   // Pick up any uploads/deletes that happened since the last reader load.
-  const_cast<SdCardFontSystem&>(sdFontSystem).refreshIfDirty();
+  const_cast<SdCardFontSystem&>(sdFontSystem).ensureDiscovered();
   const auto& families = sdFontSystem.registry().getFamilies();
 
   JsonDocument doc;
