@@ -13,6 +13,11 @@
 class EpubReaderActivity final : public Activity {
   std::shared_ptr<Epub> epub;
   std::unique_ptr<Section> section = nullptr;
+  // Consecutive page-load failures. The recovery path clears the section cache and
+  // rebuilds (re-paginates the whole chapter) on the next render; if loading keeps
+  // failing this bounds the retries so a corrupt EPUB / bad SD can't spin forever.
+  // Reset to 0 whenever a page loads successfully.
+  int pageLoadFailures = 0;
   int currentSpineIndex = 0;
   int nextPageNumber = 0;
   std::optional<uint16_t> pendingPageJump;
