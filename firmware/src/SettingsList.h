@@ -98,8 +98,9 @@ inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
 // #1636) so the per-entry SettingInfo cost is paid once. When an
 // SdCardFontRegistry is supplied AND has SD card fonts installed, the
 // font-family entry is replaced in a per-call copy with a registry-aware
-// version. Callers without SD fonts pay only a vector copy.
-inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* registry = nullptr) {
+// version. Read-only callers (JSON persistence) use getBaseSettingsList() and
+// pay no copy.
+inline const std::vector<SettingInfo>& getBaseSettingsList() {
   static const std::vector<SettingInfo> baseList = [] {
     std::vector<SettingInfo> v = {
         // --- Display ---
@@ -289,7 +290,14 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
     return v;
   }();
 
-  std::vector<SettingInfo> v = baseList;
+  return baseList;
+}
+
+// Mutable copy of the base list, with the font-family entry replaced by a
+// registry-aware version when SD card fonts are installed. Only callers that
+// need the SD font enum values pay the vector copy.
+inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* registry = nullptr) {
+  std::vector<SettingInfo> v = getBaseSettingsList();
   if (registry && registry->getFamilyCount() > 0) {
     auto it = std::find_if(v.begin(), v.end(), [](const SettingInfo& s) { return s.nameId == StrId::STR_FONT_FAMILY; });
     if (it != v.end()) {

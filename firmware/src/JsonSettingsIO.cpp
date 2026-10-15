@@ -126,7 +126,7 @@ bool JsonSettingsIO::loadState(CrossPointState& s, const char* json) {
 bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path) {
   JsonDocument doc;
 
-  for (const auto& info : getSettingsList()) {
+  for (const auto& info : getBaseSettingsList()) {
     if (!info.key) continue;
     // Dynamic entries (KOReader etc.) are stored in their own files — skip.
     if (!info.valuePtr && !info.stringOffset) continue;
@@ -208,7 +208,7 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
     applyLegacyStatusBarSettings(s);
   }
 
-  for (const auto& info : getSettingsList()) {
+  for (const auto& info : getBaseSettingsList()) {
     if (!info.key) continue;
     // Dynamic entries (KOReader etc.) are stored in their own files — skip.
     if (!info.valuePtr && !info.stringOffset) continue;
