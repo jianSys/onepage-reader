@@ -15,6 +15,7 @@
 #include "RecentBooksStore.h"
 #include "SettingsList.h"
 #include "WifiCredentialStore.h"
+#include "WordBookStore.h"
 
 // Convert legacy settings.
 void applyLegacyStatusBarSettings(CrossPointSettings& settings) {
@@ -528,5 +529,49 @@ bool JsonSettingsIO::loadBookmarks(std::vector<BookmarkEntry>& bookmarks, const 
   }
 
   LOG_DBG("BKM", "Loaded %zu bookmarks from file", bookmarks.size());
+  return true;
+}
+
+// ---- Word book ----
+
+bool JsonSettingsIO::saveWordBook(const WordBookStore& store, const char* path) {
+  JsonDocument doc;
+  doc["seq"] = store.reviewSeq;
+  JsonArray arr = doc["words"].to<JsonArray>();
+  for (const auto& w : store.entries) {
+    JsonObject obj = arr.add<JsonObject>();
+    obj["w"] = w.word;
+    obj["m"] = w.meaning;
+    obj["b"] = static_cast<int>(w.box);
+    obj["s"] = w.lastSeenSeq;
+  }
+
+  String json;
+  serializeJson(doc, json);
+  return Storage.writeFile(path, json);
+}
+
+bool JsonSettingsIO::loadWordBook(WordBookStore& store, const char* json) {
+  JsonDocument doc;
+  auto error = deserializeJson(doc, json);
+  if (error) {
+    LOG_ERR("WBS", "JSON parse error: %s", error.c_str());
+    return false;
+  }
+
+  store.reviewSeq = doc["seq"] | static_cast<uint32_t>(0);
+  JsonArray arr = doc["words"].as<JsonArray>();
+  store.entries.clear();
+  store.entries.reserve(arr.size());
+  for (JsonObject obj : arr) {
+    WordEntry e;
+    e.word = obj["w"] | std::string("");
+    e.meaning = obj["m"] | std::string("");
+    e.box = static_cast<uint8_t>(obj["b"] | 1);
+    e.lastSeenSeq = obj["s"] | static_cast<uint32_t>(0);
+    store.entries.push_back(std::move(e));
+  }
+
+  LOG_DBG("WBS", "Loaded %zu words from file", store.entries.size());
   return true;
 }

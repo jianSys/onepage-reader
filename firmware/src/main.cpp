@@ -29,6 +29,7 @@
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
+#include "WordBookStore.h"
 #include "SdCardFontSystem.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
@@ -382,6 +383,7 @@ void setup() {
 #endif
   KOREADER_STORE.loadFromFile();
   OPDS_STORE.loadFromFile();
+  WORDBOOK.loadFromFile();
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
 

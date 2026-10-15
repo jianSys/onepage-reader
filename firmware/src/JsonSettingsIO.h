@@ -7,6 +7,7 @@ class CrossPointState;
 class WifiCredentialStore;
 class RecentBooksStore;
 class OpdsServerStore;
+class WordBookStore;
 struct BookmarkEntry;
 
 namespace JsonSettingsIO {
@@ -34,5 +35,9 @@ bool loadOpds(OpdsServerStore& store, const char* json, bool* needsResave = null
 // Bookmarks
 bool saveBookmarks(const std::vector<BookmarkEntry>& bookmarks, const char* path);
 bool loadBookmarks(std::vector<BookmarkEntry>& bookmarks, const char* json);
+
+// WordBookStore (vocabulary / Leitner review)
+bool saveWordBook(const WordBookStore& store, const char* path);
+bool loadWordBook(WordBookStore& store, const char* json);
 
 }  // namespace JsonSettingsIO
