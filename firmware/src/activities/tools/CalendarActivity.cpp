@@ -30,6 +30,13 @@ int daysInMonth(int y, int m) {
   return dim[m - 1];
 }
 
+// Which weekday sits in column 0. Chinese locales conventionally start the week on
+// Monday; English (US) on Sunday. dayOfWeek()/struct tm use 0 = Sunday .. 6 = Saturday.
+int weekStartColumn() {
+  const Language lang = I18N.getLanguage();
+  return (lang == Language::ZH_HANS || lang == Language::ZH_HANT) ? 1 : 0;
+}
+
 // Short weekday labels, Sunday-first to match dayOfWeek()/tm_wday. Drawn as the
 // grid's header row; reuse of the lock-screen weekday strings keeps the wording
 // consistent and needs no new art.
@@ -121,26 +128,28 @@ void CalendarActivity::render(RenderLock&& /*lock*/) {
 
   const int fontId = UI_10_FONT_ID;
   const int lineH = renderer.getLineHeight(fontId);
+  const int weekStart = weekStartColumn();  // 0 = Sunday-first (EN), 1 = Monday-first (zh)
 
-  // Weekday header row.
+  // Weekday header row, ordered from the locale's first weekday.
   const int gridW = (sw / COLS) * COLS;
   const int gridX0 = (sw - gridW) / 2;
   const int colW = gridW / COLS;
   const int headerY = content.y;
-  for (int c = 0; c < COLS; ++c) {
-    drawInColumn(renderer, fontId, gridX0 + c * colW, colW, headerY, I18N.get(kWEEKDAY[c]), true);
+  for (int slot = 0; slot < COLS; ++slot) {
+    const int dow = (weekStart + slot) % COLS;
+    drawInColumn(renderer, fontId, gridX0 + slot * colW, colW, headerY, I18N.get(kWEEKDAY[dow]), true);
   }
 
   // Day grid: up to 6 rows below the header.
   const int gridTop = headerY + lineH + metrics.verticalSpacing;
   const int rowH = std::max(lineH + 4, (content.y + content.height - gridTop) / 6);
-  const int firstDow = dayOfWeek(viewYear, viewMonth, 1);
+  const int firstCol = (dayOfWeek(viewYear, viewMonth, 1) - weekStart + COLS) % COLS;
   const int dim = daysInMonth(viewYear, viewMonth);
   const bool viewingToday = (viewYear == todayYear && viewMonth == todayMonth);
 
   char numBuf[4];
   for (int d = 1; d <= dim; ++d) {
-    const int cell = firstDow + (d - 1);
+    const int cell = firstCol + (d - 1);
     const int row = cell / COLS;
     const int col = cell % COLS;
     const int cx = gridX0 + col * colW;
