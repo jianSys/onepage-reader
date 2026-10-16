@@ -702,12 +702,18 @@ void GfxRenderer::drawPixelDither<Color::White>(const int x, const int y) const 
 
 template <>
 void GfxRenderer::drawPixelDither<Color::LightGray>(const int x, const int y) const {
-  drawPixel(x, y, x % 2 == 0 && y % 2 == 0);
+  // 25% duty on a sheared lattice (dot columns shift by 2 every row) instead of
+  // the axis-aligned 2x2 grid: same density, but no period-2 rows/columns, so it
+  // moires far less against text stems and rectangular UI edges.
+  drawPixel(x, y, (x + 2 * y) % 4 == 0);
 }
 
 template <>
 void GfxRenderer::drawPixelDither<Color::DarkGray>(const int x, const int y) const {
-  drawPixel(x, y, (x + y) % 2 == 0);  // TODO: maybe find a better pattern?
+  // 50% duty: the plain checkerboard is the finest pattern achievable at this
+  // density (ordered dithering at exactly 1/2 degenerates to the same lattice),
+  // so it is kept deliberately.
+  drawPixel(x, y, (x + y) % 2 == 0);
 }
 
 void GfxRenderer::fillRectDither(const int x, const int y, const int width, const int height, Color color) const {

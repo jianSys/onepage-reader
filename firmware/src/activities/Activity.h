@@ -34,6 +34,13 @@ class Activity {
 
   virtual void render(RenderLock&&) {}
 
+  // Display the framebuffer with a menu-oriented ghost-cleanup cadence: FAST
+  // refreshes for most redraws, a HALF refresh every few refreshFrequency
+  // redraws to scrub the ghosting left by the moving inverted selection row.
+  // Reader activities keep their own per-page cadence and should keep calling
+  // renderer.displayBuffer() directly.
+  void displayUiBuffer() const;
+
   // If immediate is true, the update will be triggered immediately.
   // Otherwise, it will be deferred until the end of the current loop iteration.
   virtual void requestUpdate(bool immediate = false);

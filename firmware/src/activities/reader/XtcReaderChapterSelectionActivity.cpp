@@ -114,10 +114,10 @@ void XtcReaderChapterSelectionActivity::render(RenderLock&&) {
 
   const auto& chapters = xtc->getChapters();
   if (chapters.empty()) {
-    // Center the empty state within the gutter-safe content region.
-    const int emptyX = contentX + (contentWidth - renderer.getTextWidth(UI_10_FONT_ID, tr(STR_NO_CHAPTERS))) / 2;
-    renderer.drawText(UI_10_FONT_ID, emptyX, 120 + contentY, tr(STR_NO_CHAPTERS));
-    renderer.displayBuffer();
+    // Shared empty-state block, centered in the gutter-safe content region.
+    GUI.drawEmptyState(renderer, Rect{contentX, contentY, contentWidth, renderer.getScreenHeight() - 2 * contentY},
+                       UIIcon::Library, tr(STR_NO_CHAPTERS));
+    displayUiBuffer();
     return;
   }
 
@@ -136,5 +136,5 @@ void XtcReaderChapterSelectionActivity::render(RenderLock&&) {
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   }
 
-  renderer.displayBuffer();
+  displayUiBuffer();
 }

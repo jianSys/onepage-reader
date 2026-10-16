@@ -180,7 +180,8 @@ void WordBookActivity::render(RenderLock&&) {
       });
 
   if (entries.empty()) {
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, contentTop + contentHeight / 2, tr(STR_NO_WORDS_YET));
+    GUI.drawEmptyState(renderer, Rect{0, contentTop, pageWidth, contentHeight}, UIIcon::Book, tr(STR_NO_WORDS_YET),
+                       tr(STR_ADD_WORD));
   }
 
   const bool onWordRow = selectorIndex >= ACTION_ROWS;
@@ -188,5 +189,5 @@ void WordBookActivity::render(RenderLock&&) {
       mappedInput.mapLabels(tr(STR_HOME), tr(STR_SELECT), tr(STR_DIR_UP), onWordRow ? tr(STR_DELETE) : tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
-  renderer.displayBuffer();
+  displayUiBuffer();
 }

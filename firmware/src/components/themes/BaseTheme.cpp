@@ -13,7 +13,11 @@
 #include "I18n.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
+#include "components/icons/book.h"
 #include "components/icons/bookmark.h"
+#include "components/icons/folder.h"
+#include "components/icons/library.h"
+#include "components/icons/recent.h"
 #include "fontIds.h"
 
 // Internal constants
@@ -697,6 +701,46 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
         tileY + (BaseMetrics::values.menuRowHeight - lineHeight) / 2;  // vertically centered assuming y is top of text
     // Invert text when the tile is selected, to contrast with the filled background
     renderer.drawText(UI_10_FONT_ID, textX, textY, label, selectedIndex != i);
+  }
+}
+
+void BaseTheme::drawEmptyState(const GfxRenderer& renderer, const Rect rect, const UIIcon icon, const char* title,
+                              const char* hint) const {
+  // 32x32 icon set from components/icons; unmapped icons fall back to text-only.
+  const uint8_t* bitmap = nullptr;
+  switch (icon) {
+    case UIIcon::Folder:
+      bitmap = FolderIcon;
+      break;
+    case UIIcon::Book:
+      bitmap = BookIcon;
+      break;
+    case UIIcon::Library:
+      bitmap = LibraryIcon;
+      break;
+    case UIIcon::Recent:
+      bitmap = RecentIcon;
+      break;
+    default:
+      break;
+  }
+
+  constexpr int iconSize = 32;
+  const int titleLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
+  const int hintLineHeight = renderer.getLineHeight(SMALL_FONT_ID);
+  const int gap = BaseMetrics::values.verticalSpacing * 2;
+  const int blockHeight = (bitmap != nullptr ? iconSize + gap : 0) + titleLineHeight +
+                          (hint != nullptr ? gap / 2 + hintLineHeight : 0);
+  int y = rect.y + (rect.height - blockHeight) / 2;
+
+  if (bitmap != nullptr) {
+    renderer.drawImage(bitmap, rect.x + (rect.width - iconSize) / 2, y, iconSize, iconSize);
+    y += iconSize + gap;
+  }
+  renderer.drawCenteredText(UI_10_FONT_ID, y, title, true, EpdFontFamily::BOLD);
+  y += titleLineHeight + gap / 2;
+  if (hint != nullptr) {
+    renderer.drawCenteredText(SMALL_FONT_ID, y, hint);
   }
 }
 

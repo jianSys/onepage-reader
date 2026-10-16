@@ -208,6 +208,11 @@ class BaseTheme {
                               const std::function<UIIcon(int index)>& rowIcon) const;
   virtual Rect drawPopup(const GfxRenderer& renderer, const char* message) const;
   virtual void fillPopupProgress(const GfxRenderer& renderer, const Rect& layout, const int progress) const;
+  // Shared empty-state block: centered 32px icon (when the theme maps one for
+  // UIIcon) + bold title + optional small hint line, vertically centered in
+  // rect. Replaces bare single-line "nothing here" texts on list activities.
+  virtual void drawEmptyState(const GfxRenderer& renderer, Rect rect, UIIcon icon, const char* title,
+                              const char* hint = nullptr) const;
   void drawStatusBar(GfxRenderer& renderer, const float bookProgress, const int currentPage, const int pageCount,
                      std::string title, const int paddingBottom = 0, const int textYOffset = 0,
                      const bool fillMargin = true, const bool isPageBookmarked = false) const;

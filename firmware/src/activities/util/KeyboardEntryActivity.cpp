@@ -739,7 +739,7 @@ void KeyboardEntryActivity::render(RenderLock&&) {
 
   GUI.drawSideButtonHints(renderer, ">", "<");
 
-  renderer.displayBuffer();
+  displayUiBuffer();
 }
 
 void KeyboardEntryActivity::onComplete(std::string text) {

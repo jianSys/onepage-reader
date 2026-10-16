@@ -364,7 +364,7 @@ void FileBrowserActivity::render(RenderLock&&) {
       pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing - pathReserved;
   if (files.empty()) {
     const char* emptyMsg = (mode == Mode::PickFirmware) ? tr(STR_NO_BIN_FILES) : tr(STR_NO_FILES_FOUND);
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, contentTop + 20, emptyMsg);
+    GUI.drawEmptyState(renderer, Rect{0, contentTop, pageWidth, contentHeight}, UIIcon::Folder, emptyMsg);
   } else {
     GUI.drawList(
         renderer, Rect{0, contentTop, pageWidth, contentHeight}, files.size(), selectorIndex,
@@ -410,7 +410,7 @@ void FileBrowserActivity::render(RenderLock&&) {
                                             files.empty() ? "" : tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
-  renderer.displayBuffer();
+  displayUiBuffer();
 }
 
 size_t FileBrowserActivity::findEntry(const std::string& name) const {
