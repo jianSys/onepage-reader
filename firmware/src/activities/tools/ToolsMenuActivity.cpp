@@ -7,18 +7,21 @@
 #include <string>
 
 #include "MappedInputManager.h"
+#include "CalendarActivity.h"
 #include "PomodoroActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
 namespace {
 // Tool rows. Extend by appending here and handling the index in launchTool().
-enum ToolRow { ROW_POMODORO = 0, ROW_COUNT };
+enum ToolRow { ROW_POMODORO = 0, ROW_CALENDAR, ROW_COUNT };
 
 const char* toolTitle(int row) {
   switch (row) {
     case ROW_POMODORO:
       return tr(STR_POMODORO);
+    case ROW_CALENDAR:
+      return tr(STR_CALENDAR);
     default:
       return "";
   }
@@ -28,6 +31,8 @@ const char* toolSubtitle(int row) {
   switch (row) {
     case ROW_POMODORO:
       return tr(STR_POMODORO_HINT);
+    case ROW_CALENDAR:
+      return tr(STR_CALENDAR_HINT);
     default:
       return "";
   }
@@ -54,6 +59,8 @@ void ToolsMenuActivity::loop() {
     auto handler = [this](const ActivityResult&) { requestUpdate(); };
     if (selectorIndex == ROW_POMODORO) {
       startActivityForResult(std::make_unique<PomodoroActivity>(renderer, mappedInput), std::move(handler));
+    } else if (selectorIndex == ROW_CALENDAR) {
+      startActivityForResult(std::make_unique<CalendarActivity>(renderer, mappedInput), std::move(handler));
     }
     return;
   }

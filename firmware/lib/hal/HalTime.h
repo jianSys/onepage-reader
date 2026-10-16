@@ -42,6 +42,7 @@ inline bool getLocalHHMM(int& hour, int& minute, int16_t tzOffsetMin) {
 // Broken-down local time for the clock+date lock-screen style. `weekday` follows
 // struct tm: 0 = Sunday .. 6 = Saturday. Returns false if never synced.
 struct DateTime {
+  int year;    // full year (e.g. 2026)
   int hour;
   int minute;
   int month;   // 1..12
@@ -55,6 +56,7 @@ inline bool getLocalDateTime(DateTime& out, int16_t tzOffsetMin) {
   const time_t local = now + static_cast<time_t>(tzOffsetMin) * 60;
   struct tm tmLocal;
   gmtime_r(&local, &tmLocal);  // gmtime since the offset is already applied
+  out.year = tmLocal.tm_year + 1900;
   out.hour = tmLocal.tm_hour;
   out.minute = tmLocal.tm_min;
   out.month = tmLocal.tm_mon + 1;
