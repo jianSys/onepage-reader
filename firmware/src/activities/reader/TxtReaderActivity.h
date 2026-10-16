@@ -26,8 +26,6 @@ class TxtReaderActivity final : public Activity {
   uint8_t cachedScreenMargin = 0;
   uint8_t cachedParagraphAlignment = CrossPointSettings::LEFT_ALIGN;
   int cachedOrientedMarginTop = 0;
-  int cachedOrientedMarginRight = 0;
-  int cachedOrientedMarginBottom = 0;
   int cachedOrientedMarginLeft = 0;
 
   void renderPage();

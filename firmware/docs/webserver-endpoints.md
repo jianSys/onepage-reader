@@ -311,6 +311,54 @@ Successful response:
 {"ok":true}
 ```
 
+## TXT Index API
+
+The `/txt-index` page pre-builds `index.bin` page-offset caches in the browser so
+large TXT books open instantly on-device instead of running the layout pass. For
+the generated cache to pass `TxtReaderActivity::loadPageIndexCache()`'s header
+check, the browser must stamp the *exact* geometry the reader computes. These
+two endpoints expose that authoritative data so the page never re-derives it.
+
+### `GET /api/txt-layout`
+
+Returns the reader's live TXT pagination geometry, computed by the same
+`TxtLayout::compute()` the reader itself uses (`src/util/TxtLayout.h`). The page
+stores `viewportWidth`, `linesPerPage`, `fontId`, `screenMargin` and
+`paragraphAlignment` verbatim into the `index.bin` header, and replays the
+reader's per-page `chunkSize` window when simulating page breaks.
+
+```bash
+curl http://crosspoint.local/api/txt-layout
+```
+
+Response:
+
+```json
+{
+  "fontId": 16,
+  "viewportWidth": 464,
+  "linesPerPage": 38,
+  "lineHeight": 20,
+  "screenMargin": 5,
+  "paragraphAlignment": 0,
+  "chunkSize": 8192
+}
+```
+
+### `GET /api/fonts/advances`
+
+Streams the current reader font's per-codepoint advance widths as a binary blob
+so the browser can simulate word wrapping. Layout (little-endian):
+
+```
+u8 advanceY | u32 fontId | u16 numEntries | numEntries * { u32 first, u32 last, u16 advPx }
+```
+
+Uniform ranges (e.g. full-width CJK) collapse to one entry. Returns `404` for
+SD-card fonts that expose no interval table; the page then falls back to
+approximate advances. `fontId` here is informational — the header value comes
+from `/api/txt-layout`.
+
 ## OPDS Server API
 
 ### `GET /api/opds`

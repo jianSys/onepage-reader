@@ -26,6 +26,10 @@
 #include "html/TxtIndexPageHtml.generated.h"
 #include "html/js/jszip_minJs.generated.h"
 #include "util/BookCacheUtils.h"
+#include "util/TxtLayout.h"
+
+// Defined in main.cpp; needed for font metrics and TXT layout calculations
+extern GfxRenderer renderer;
 
 namespace {
 // Folders/files to hide from the web interface file browser
@@ -171,6 +175,23 @@ void CrossPointWebServer::begin() {
   server->on("/fonts", HTTP_GET, [this] { handleFontsPage(); });
   server->on("/txt-index", HTTP_GET, [this] { handleTxtIndexPage(); });
   server->on("/api/fonts/advances", HTTP_GET, [this] { handleFontAdvances(); });
+  server->on("/api/txt-layout", HTTP_GET, [this] {
+    // Authoritative TXT pagination geometry, computed by the same TxtLayout::compute()
+    // the reader itself uses. The browser stamps these into index.bin instead of
+    // re-deriving the formula, so the header can never mismatch and force a rebuild.
+    const TxtLayout::Metrics m = TxtLayout::compute(renderer);
+    JsonDocument doc;
+    doc["fontId"] = m.fontId;
+    doc["viewportWidth"] = m.viewportWidth;
+    doc["linesPerPage"] = m.linesPerPage;
+    doc["lineHeight"] = m.lineHeight;
+    doc["screenMargin"] = static_cast<int>(m.screenMargin);
+    doc["paragraphAlignment"] = static_cast<int>(m.paragraphAlignment);
+    doc["chunkSize"] = TxtLayout::CHUNK_SIZE;
+    String json;
+    serializeJson(doc, json);
+    server->send(200, "application/json", json);
+  });
   server->on("/api/fonts", HTTP_GET, [this] { handleFontList(); });
   server->on("/api/fonts/upload", HTTP_POST, [this] { handleFontUpload(); }, [this] { handleFontUploadData(); });
   server->on("/api/fonts/delete", HTTP_POST, [this] { handleFontDelete(); });
@@ -1774,9 +1795,6 @@ void CrossPointWebServer::handleTxtIndexPage() const {
   sendHtmlContent(server.get(), TxtIndexPageHtml, sizeof(TxtIndexPageHtml));
   LOG_DBG("WEB", "Served TXT index generator page");
 }
-
-// Defined in main.cpp; needed to access font metrics for TXT index generator
-extern GfxRenderer renderer;
 
 void CrossPointWebServer::handleFontAdvances() const {
   const int fontId = SETTINGS.getReaderFontId();

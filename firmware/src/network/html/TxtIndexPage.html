@@ -119,23 +119,31 @@ function murmur2_32(str) {
 // === Globals ===
 let settings = {};
 let fontAdvances = new Map(); // codepoint → advanceX in pixels
+// Authoritative pagination geometry, fetched from /api/txt-layout (the device
+// computes it with the SAME TxtLayout::compute() the reader uses). We never
+// re-derive viewportWidth/linesPerPage here — that drift is what made a
+// browser-built index.bin fail loadPageIndexCache()'s header check and forced
+// a full rebuild every time the book was opened on-device.
 let viewportWidth = 0, linesPerPage = 0, lineHeight = 20;
+let chunkSize = 8192;      // reader packs one page per chunk window; affects breaks
+let readerFontId = 0, screenMargin = 5, paragraphAlignment = 0;
 let books = [];
 
-const SCREEN_W = 480, SCREEN_H = 800, STATUS_BAR_H = 28;
-
-// === Load device settings + font metrics ===
+// === Fetch authoritative layout + device settings ===
 async function loadSettings() {
   const resp = await fetch('/api/settings');
   const arr = await resp.json();
   const map = {}; for (const s of arr) map[s.key] = s.value;
   settings = map;
 
-  const margin = settings.screenMargin ?? 5;
-  const marginTop = Math.max(margin, STATUS_BAR_H);
-  viewportWidth = SCREEN_W - margin * 2;
-  lineHeight = [16, 20, 24, 28][settings.fontSize ?? 1] || 20;
-  linesPerPage = Math.max(1, Math.floor((SCREEN_H - marginTop - margin) / lineHeight));
+  const L = await (await fetch('/api/txt-layout')).json();
+  viewportWidth = L.viewportWidth;
+  linesPerPage = L.linesPerPage;
+  lineHeight = L.lineHeight || lineHeight;
+  chunkSize = L.chunkSize || 8192;
+  readerFontId = L.fontId;
+  screenMargin = L.screenMargin;
+  paragraphAlignment = L.paragraphAlignment;
 }
 
 async function loadFontAdvances() {
@@ -144,8 +152,9 @@ async function loadFontAdvances() {
   const buf = await resp.arrayBuffer();
   const view = new DataView(buf);
   // Format: uint8 advanceY + uint32 fontId + uint16 numEntries + entries {u32 first, u32 last, u16 adv}
+  // fontId/viewport come from /api/txt-layout (authoritative); advanceY only
+  // refines the per-line pixel height used to simulate wrapping.
   lineHeight = view.getUint8(0) || lineHeight;
-  settings.fontId = view.getUint32(1, true);  // firmware's real getReaderFontId() — must match index.bin check
   const count = view.getUint16(5, true);
   let off = 7;
   fontAdvances = new Map();
@@ -157,10 +166,6 @@ async function loadFontAdvances() {
     else { for (let cp = first; cp <= last; cp++) fontAdvances.set(cp, adv); }
     off += 10;
   }
-  // Recalc linesPerPage from actual font advanceY
-  const margin = settings.screenMargin ?? 5;
-  const marginTop = Math.max(margin, STATUS_BAR_H);
-  linesPerPage = Math.max(1, Math.floor((SCREEN_H - marginTop - margin) / lineHeight));
 }
 
 function generateFallbackAdvances() {
@@ -175,9 +180,9 @@ async function scanBooks() {
   await loadSettings();
   await loadFontAdvances();
   document.getElementById('settings-info').textContent =
-    `Font size=${settings.fontSize ?? 1}, Margin=${settings.screenMargin ?? 5}, ` +
+    `Device layout · fontId=${readerFontId}, Margin=${screenMargin}, ` +
     `Viewport=${viewportWidth}px, Lines/page=${linesPerPage}, LineH=${lineHeight}px, ` +
-    `Advances=${fontAdvances.size} entries`;
+    `Chunk=${chunkSize}B, Advances=${fontAdvances.size} entries`;
   await recursiveScan('/');
   renderBookList();
 }
@@ -255,6 +260,14 @@ async function generateIndex(book) {
 }
 
 // === Layout simulation ===
+// Faithful port of TxtReaderActivity::loadPageAtOffset so the browser lands on
+// the SAME page-start byte offsets the device would compute. It mirrors the
+// reader's per-page 8KB chunk window (a source line whose newline falls outside
+// the window ends the page early) and its space-preferring shrink-to-fit word
+// wrap. Width per codepoint uses the /api/fonts/advances table (a pixel
+// approximation — the device's kerning/ligature measurement cannot be replayed
+// in JS), so exotic typography may still differ by a few pixels, but the header
+// and page geometry now agree and the cache is accepted without a rebuild.
 function buildPageIndex(textBytes) {
   const offsets = [0]; let offset = 0;
   while (offset < textBytes.length) {
@@ -266,30 +279,77 @@ function buildPageIndex(textBytes) {
   return offsets;
 }
 
-function layoutOnePage(textBytes, startOffset) {
-  let pos = startOffset, lineCount = 0;
-  const fileSize = textBytes.length;
-  while (pos < fileSize && lineCount < linesPerPage) {
-    let lineEnd = pos;
-    while (lineEnd < fileSize && textBytes[lineEnd] !== 0x0A) lineEnd++;
-    const hasCR = lineEnd > pos && textBytes[lineEnd-1] === 0x0D;
-    const contentLen = hasCR ? lineEnd-pos-1 : lineEnd-pos;
-    let lineStart = pos, consumed = 0;
-    while (consumed < contentLen && lineCount < linesPerPage) {
-      let w = 0, breakAt = consumed;
-      while (breakAt < contentLen) {
-        const cp = decodeCP(textBytes, lineStart+breakAt);
-        const adv = fontAdvances.get(cp.codepoint) || 10;
-        if (w+adv > viewportWidth && breakAt > consumed) break;
-        w += adv; breakAt += cp.bytes;
-      }
-      if (breakAt === consumed) { const cp = decodeCP(textBytes, lineStart+breakAt); breakAt += cp.bytes||1; }
-      lineCount++; consumed = breakAt;
-    }
-    if (consumed >= contentLen) pos = lineEnd+1;
-    else pos = lineStart+consumed;
+// Sum the on-screen advance (px) of the codepoints in bytes [start, start+len).
+function prefixWidth(textBytes, start, len) {
+  let w = 0, i = 0;
+  while (i < len) {
+    const cp = decodeCP(textBytes, start + i);
+    w += fontAdvances.get(cp.codepoint) || 10;
+    i += cp.bytes || 1;
   }
-  return pos;
+  return w;
+}
+
+function layoutOnePage(textBytes, pageStart) {
+  const fileSize = textBytes.length;
+  const chunkEnd = Math.min(pageStart + chunkSize, fileSize); // reader reads one CHUNK_SIZE window per page
+  let pos = pageStart;
+  let lineCount = 0;
+
+  while (pos < chunkEnd && lineCount < linesPerPage) {
+    // Scan to the newline, but only within the chunk window.
+    let lineEnd = pos;
+    while (lineEnd < chunkEnd && textBytes[lineEnd] !== 0x0A) lineEnd++;
+    // Complete if the newline was found in-window, or we reached the true EOF.
+    const lineComplete = (lineEnd < chunkEnd) || (lineEnd >= fileSize);
+    if (!lineComplete && lineCount > 0) break; // truncated line + already have content -> page ends here
+
+    // Display length drops a trailing CR (CRLF files) and the newline itself.
+    let displayLen = lineEnd - pos;
+    if (displayLen > 0 && textBytes[pos + displayLen - 1] === 0x0D) displayLen--;
+
+    if (displayLen === 0) { // blank line -> exactly one visual line
+      lineCount++;
+      pos = lineEnd + 1;
+      continue;
+    }
+
+    // Wrap the logical line [pos, pos+displayLen) into visual lines. `abs` is
+    // the start of the not-yet-emitted remainder, `sub` its end.
+    let abs = pos;
+    const sub = pos + displayLen;
+    for (;;) {
+      const curLen = sub - abs;
+      if (curLen <= 0) break;                 // logical line fully consumed
+      if (prefixWidth(textBytes, abs, curLen) <= viewportWidth) {
+        lineCount++; abs = sub; break;         // remainder fits on one line
+      }
+      // Shrink breakPos from curLen until the prefix fits, preferring a space
+      // (so we break between words) and otherwise snapping to a UTF-8 start.
+      let breakPos = curLen;
+      while (breakPos > 0 && prefixWidth(textBytes, abs, breakPos) > viewportWidth) {
+        let spacePos = -1;
+        for (let i = breakPos - 1; i >= 1; i--) { if (textBytes[abs + i] === 0x20) { spacePos = i; break; } }
+        if (spacePos !== -1) {
+          breakPos = spacePos;
+        } else {
+          breakPos--;
+          while (breakPos > 0 && (textBytes[abs + breakPos] & 0xC0) === 0x80) breakPos--; // stay on a codepoint boundary
+        }
+      }
+      if (breakPos === 0) breakPos = 1;        // force progress on a single over-wide glyph
+      lineCount++;
+      let skipChars = breakPos;
+      if (breakPos < curLen && textBytes[abs + breakPos] === 0x20) skipChars++; // swallow the break space
+      abs += skipChars;
+      if (lineCount >= linesPerPage) break;
+    }
+
+    if (abs >= sub) pos = lineEnd + 1;          // finished the logical line -> past newline
+    else { pos = abs; break; }                   // page filled mid-line -> stop
+  }
+
+  return Math.min(pos, fileSize);
 }
 
 function decodeCP(bytes, off) {
@@ -306,8 +366,8 @@ function packIndexBin(offsets, fileSize) {
   const buf = new ArrayBuffer(total); const v = new DataView(buf); let p=0;
   v.setUint32(p,0x54585449,true);p+=4; v.setUint8(p,3);p+=1;
   v.setUint32(p,fileSize,true);p+=4; v.setUint32(p,viewportWidth,true);p+=4;
-  v.setUint32(p,linesPerPage,true);p+=4; v.setInt32(p,settings.fontId||0,true);p+=4;
-  v.setInt32(p,settings.screenMargin||5,true);p+=4; v.setUint8(p,settings.paragraphAlignment||0);p+=1;
+  v.setUint32(p,linesPerPage,true);p+=4; v.setInt32(p,readerFontId||0,true);p+=4;
+  v.setInt32(p,screenMargin,true);p+=4; v.setUint8(p,paragraphAlignment||0);p+=1;
   v.setUint32(p,offsets.length,true);p+=4;
   for(const o of offsets){v.setUint32(p,o,true);p+=4;}
   return new Uint8Array(buf);

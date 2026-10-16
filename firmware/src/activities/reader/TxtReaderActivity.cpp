@@ -16,9 +16,9 @@
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/TxtLayout.h"
 
 namespace {
-constexpr size_t CHUNK_SIZE = 8 * 1024;  // 8KB chunk for reading
 // Cache file magic and version
 constexpr uint32_t CACHE_MAGIC = 0x54585449;  // "TXTI"
 constexpr uint8_t CACHE_VERSION = 3;          // Increment when cache format changes
@@ -102,28 +102,19 @@ void TxtReaderActivity::initializeReader() {
     return;
   }
 
-  // Store current settings for cache validation
-  cachedFontId = SETTINGS.getReaderFontId();
-  cachedScreenMargin = SETTINGS.screenMargin;
-  cachedParagraphAlignment = SETTINGS.paragraphAlignment;
+  // Authoritative geometry from the shared TxtLayout helper — the web TXT
+  // index generator reads the same numbers through /api/txt-layout, so an
+  // index.bin built in the browser validates against identical values.
+  const TxtLayout::Metrics layout = TxtLayout::compute(renderer);
+  cachedFontId = layout.fontId;
+  cachedScreenMargin = layout.screenMargin;
+  cachedParagraphAlignment = layout.paragraphAlignment;
+  cachedOrientedMarginTop = layout.orientedMarginTop;
+  cachedOrientedMarginLeft = layout.orientedMarginLeft;
+  viewportWidth = layout.viewportWidth;
+  linesPerPage = layout.linesPerPage;
 
-  // Calculate viewport dimensions
-  renderer.getOrientedViewableTRBL(&cachedOrientedMarginTop, &cachedOrientedMarginRight, &cachedOrientedMarginBottom,
-                                   &cachedOrientedMarginLeft);
-  cachedOrientedMarginTop += cachedScreenMargin;
-  cachedOrientedMarginLeft += cachedScreenMargin;
-  cachedOrientedMarginRight += cachedScreenMargin;
-  cachedOrientedMarginBottom +=
-      std::max(cachedScreenMargin, static_cast<uint8_t>(UITheme::getInstance().getStatusBarHeight()));
-
-  viewportWidth = renderer.getScreenWidth() - cachedOrientedMarginLeft - cachedOrientedMarginRight;
-  const int viewportHeight = renderer.getScreenHeight() - cachedOrientedMarginTop - cachedOrientedMarginBottom;
-  const int lineHeight = renderer.getLineHeight(cachedFontId);
-
-  linesPerPage = viewportHeight / lineHeight;
-  if (linesPerPage < 1) linesPerPage = 1;
-
-  LOG_DBG("TRS", "Viewport: %dx%d, lines per page: %d", viewportWidth, viewportHeight, linesPerPage);
+  LOG_DBG("TRS", "Viewport width: %d, lines per page: %d", viewportWidth, linesPerPage);
 
   // Try to load cached page index first
   if (!loadPageIndexCache()) {
@@ -207,7 +198,7 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
   }
 
   // Read a chunk from file
-  size_t chunkSize = std::min(CHUNK_SIZE, fileSize - offset);
+  size_t chunkSize = std::min(static_cast<size_t>(TxtLayout::CHUNK_SIZE), fileSize - offset);
   auto* buffer = static_cast<uint8_t*>(malloc(chunkSize + 1));
   if (!buffer) {
     LOG_ERR("TRS", "Failed to allocate %zu bytes", chunkSize);
