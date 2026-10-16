@@ -4,41 +4,23 @@
 #include <array>
 
 #include "HyphenationCommon.h"
-#include "generated/hyph-de.trie.h"
 #include "generated/hyph-en.trie.h"
-#include "generated/hyph-es.trie.h"
-#include "generated/hyph-fr.trie.h"
-#include "generated/hyph-it.trie.h"
-#include "generated/hyph-pl.trie.h"
-#include "generated/hyph-ru.trie.h"
-#include "generated/hyph-sv.trie.h"
-#include "generated/hyph-uk.trie.h"
 
 namespace {
 
 // English hyphenation patterns (3/3 minimum prefix/suffix length)
 LanguageHyphenator englishHyphenator(en_patterns, isLatinLetter, toLowerLatin, 3, 3);
-LanguageHyphenator frenchHyphenator(fr_patterns, isLatinLetter, toLowerLatin);
-LanguageHyphenator germanHyphenator(de_patterns, isLatinLetter, toLowerLatin);
-LanguageHyphenator russianHyphenator(ru_patterns, isCyrillicLetter, toLowerCyrillic);
-LanguageHyphenator spanishHyphenator(es_patterns, isLatinLetter, toLowerLatin);
-LanguageHyphenator italianHyphenator(it_patterns, isLatinLetter, toLowerLatin);
-LanguageHyphenator swedishHyphenator(sv_patterns, isLatinLetter, toLowerLatin);
-LanguageHyphenator ukrainianHyphenator(uk_patterns, isCyrillicLetter, toLowerCyrillic);
-LanguageHyphenator polishHyphenator(pl_patterns, isLatinLetter, toLowerLatin);
 
-using EntryArray = std::array<LanguageEntry, 9>;
+// Only English ships in flash by design: each Liang trie costs 13-200KB of app
+// partition (de alone was 201KB) and this device's readers work in CJK scripts,
+// which wrap per character and never use hyphenation dictionaries. Books in
+// other languages degrade gracefully (see Hyphenator.cpp): explicit soft
+// hyphens and the every-N-chars fallback still apply. To re-enable a language,
+// restore its generated/hyph-XX.trie.h include, hyphenator, and entry below.
+using EntryArray = std::array<LanguageEntry, 1>;
 
 const EntryArray& entries() {
-  static const EntryArray kEntries = {{{"english", "en", &englishHyphenator},
-                                       {"french", "fr", &frenchHyphenator},
-                                       {"german", "de", &germanHyphenator},
-                                       {"russian", "ru", &russianHyphenator},
-                                       {"spanish", "es", &spanishHyphenator},
-                                       {"italian", "it", &italianHyphenator},
-                                       {"polish", "pl", &polishHyphenator},
-                                       {"swedish", "sv", &swedishHyphenator},
-                                       {"ukrainian", "uk", &ukrainianHyphenator}}};
+  static const EntryArray kEntries = {{"english", "en", &englishHyphenator}};
   return kEntries;
 }
 
