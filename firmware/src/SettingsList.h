@@ -199,6 +199,10 @@ inline const std::vector<SettingInfo>& getBaseSettingsList() {
                           {StrId::STR_STYLE_OFF, StrId::STR_STYLE_CLOCK, StrId::STR_STYLE_CLOCK_DATE,
                            StrId::STR_STYLE_DASHBOARD},
                           "lockScreenStyle", StrId::STR_CAT_CONTROLS),
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_IDLE, &CrossPointSettings::lockScreenIdleMinutes,
+                           {CrossPointSettings::MIN_SLEEP_TIMEOUT_MINUTES, CrossPointSettings::MAX_SLEEP_TIMEOUT_MINUTES,
+                            1},
+                           "lockScreenIdleMinutes", StrId::STR_CAT_CONTROLS),
         SettingInfo::Toggle(StrId::STR_PWR_BTN_FOOTNOTE_BACK, &CrossPointSettings::pwrBtnFootnoteBack,
                             "pwrBtnFootnoteBack", StrId::STR_CAT_CONTROLS),
 

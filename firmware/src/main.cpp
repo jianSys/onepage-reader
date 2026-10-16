@@ -631,6 +631,15 @@ void loop() {
     return;
   }
 
+  // The live lock screen keeps the device awake (preventAutoSleep) so it can
+  // tick; once it has idled past its own timeout with no button press, sleep at
+  // the top level (the activity must not call enterDeepSleep from its loop()).
+  if (activityManager.shouldIdleSleep()) {
+    LOG_DBG("SLP", "Lock-screen idle timeout reached, entering deep sleep");
+    enterDeepSleep(true);
+    return;
+  }
+
   if (millis() >= allowSleepAt && gpio.isPressed(HalGPIO::BTN_POWER) &&
       gpio.getPowerButtonHeldTime() > SETTINGS.getPowerButtonDuration()) {
     // If the screenshot combination is potentially being pressed, don't sleep

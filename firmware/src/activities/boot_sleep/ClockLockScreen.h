@@ -25,6 +25,9 @@ class ClockLockScreen final : public Activity {
 
   bool preventAutoSleep() override { return true; }
   bool isClockActivity() const override { return true; }
+  // Idle for lockScreenIdleMinutes with no button press => ask main.cpp to deep
+  // sleep (any press exits the clock first, so entry time is the idle anchor).
+  bool shouldIdleSleep() const override;
 
  private:
   unsigned long enteredAtMs = 0;   // millis() at onEnter, drives the exit grace window

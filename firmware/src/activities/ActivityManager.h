@@ -109,6 +109,9 @@ class ActivityManager {
   // True when the lock-screen clock is (or is pending as) the current activity,
   // so the main-loop entry hook doesn't re-launch it while it's already up.
   bool isClockActive() const;
+  // True when the current activity asks to be put into deep sleep after idling
+  // (used by the live lock screen); main.cpp owns the actual sleep call.
+  bool shouldIdleSleep() const;
   bool skipLoopDelay() const;
   ScreenshotInfo getScreenshotInfo() const;
 

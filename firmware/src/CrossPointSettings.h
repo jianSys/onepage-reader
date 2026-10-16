@@ -223,6 +223,10 @@ class CrossPointSettings {
   // What the lock screen shows when entered (via SHORT_PWRBTN::LOCK_SCREEN).
   // OFF disables the lock screen entirely (the short press then does nothing).
   uint8_t lockScreenStyle = 1;  // LSK_CLOCK
+  // Minutes of no button press before the live lock screen drops into deep sleep
+  // on its own (it otherwise stays awake forever to keep ticking). Same encoding
+  // as sleepTimeoutMinutes: MIN..NEVER, where >= SLEEP_TIMEOUT_NEVER_MINUTES = never.
+  uint8_t lockScreenIdleMinutes = 10;
   // Set once an NTP sync succeeds. Used to skip re-syncing on every WiFi connect.
   // Resetting to 0 (e.g. via the web UI) forces a re-sync on next WiFi connect.
   uint8_t clockHasBeenSynced = 0;
@@ -365,6 +369,7 @@ class CrossPointSettings {
  public:
   float getReaderLineCompression() const;
   unsigned long getSleepTimeoutMs() const;
+  unsigned long getLockScreenIdleMs() const;  // 0 = never auto-sleep the lock screen
   int getRefreshFrequency() const;
 };
 

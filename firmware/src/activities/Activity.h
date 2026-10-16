@@ -50,6 +50,11 @@ class Activity {
 
   virtual bool skipLoopDelay() { return false; }
   virtual bool preventAutoSleep() { return false; }
+  // True when this activity has been idle long enough that the main loop should
+  // put the device into deep sleep. Kept as a query (rather than letting the
+  // activity call enterDeepSleep from loop()) so sleep is always triggered at
+  // the top level, matching how auto/idle sleep already works.
+  virtual bool shouldIdleSleep() const { return false; }
   virtual bool isReaderActivity() const { return false; }
   // True for the lock-screen clock so the short-power-button entry hook does
   // not re-launch it while it is already showing (main.cpp loop()).

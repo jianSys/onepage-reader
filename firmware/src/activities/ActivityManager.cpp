@@ -269,6 +269,8 @@ bool ActivityManager::isReaderActivity() const {
 
 bool ActivityManager::isClockActive() const { return currentActivity && currentActivity->isClockActivity(); }
 
+bool ActivityManager::shouldIdleSleep() const { return currentActivity && currentActivity->shouldIdleSleep(); }
+
 bool ActivityManager::skipLoopDelay() const { return currentActivity && currentActivity->skipLoopDelay(); }
 
 ScreenshotInfo ActivityManager::getScreenshotInfo() const {

@@ -84,6 +84,12 @@ void ClockLockScreen::loop() {
   }
 }
 
+bool ClockLockScreen::shouldIdleSleep() const {
+  const unsigned long idleMs = SETTINGS.getLockScreenIdleMs();
+  if (idleMs == 0) return false;  // "Never" — keep the clock alive indefinitely
+  return millis() - enteredAtMs >= idleMs;
+}
+
 void ClockLockScreen::render(RenderLock&& /*lock*/) {
   const int sw = renderer.getScreenWidth();
   const int sh = renderer.getScreenHeight();
