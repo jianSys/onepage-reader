@@ -1813,7 +1813,11 @@ void CrossPointWebServer::handleFontAdvances() const {
   // Build binary response: uint16 numEntries + entries
   // Entry format: {uint32 first, uint32 last, uint16 advPx} (10 bytes each)
   // For intervals with uniform advance → 1 entry; for varied → per-glyph entries
-  constexpr size_t MAX_ENTRIES = 512;
+  // 1024 covers the proportional blocks a real reader font exposes (ASCII +
+  // Latin-1/Ext + IPA + Greek + Cyrillic ≈ ~650 glyphs) with headroom, so a
+  // later codepoint is not silently dropped and measured with the browser's
+  // fallback width. Full-width CJK collapses to one range entry each.
+  constexpr size_t MAX_ENTRIES = 1024;
   struct Entry { uint32_t first; uint32_t last; uint16_t advPx; };
   auto* entries = static_cast<Entry*>(malloc(MAX_ENTRIES * sizeof(Entry)));
   if (!entries) { server->send(500, "text/plain", "OOM"); return; }

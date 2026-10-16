@@ -4,10 +4,14 @@
 #include <JpegToBmpConverter.h>
 #include <Logging.h>
 
+#include "TxtPathHash.h"
+
 Txt::Txt(std::string path, std::string cacheBasePath)
     : filepath(std::move(path)), cacheBasePath(std::move(cacheBasePath)) {
-  // Generate cache path from file path hash
-  const size_t hash = std::hash<std::string>{}(filepath);
+  // Generate cache path from file path hash. Explicit MurmurHash2 (not
+  // std::hash) so the name matches the web TXT-index generator on every
+  // platform — see TxtPathHash.h.
+  const uint32_t hash = txthash::murmur2_32(filepath);
   cachePath = this->cacheBasePath + "/txt_" + std::to_string(hash);
 }
 

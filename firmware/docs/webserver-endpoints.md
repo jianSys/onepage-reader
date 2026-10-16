@@ -354,10 +354,18 @@ so the browser can simulate word wrapping. Layout (little-endian):
 u8 advanceY | u32 fontId | u16 numEntries | numEntries * { u32 first, u32 last, u16 advPx }
 ```
 
-Uniform ranges (e.g. full-width CJK) collapse to one entry. Returns `404` for
-SD-card fonts that expose no interval table; the page then falls back to
-approximate advances. `fontId` here is informational — the header value comes
-from `/api/txt-layout`.
+Uniform ranges (e.g. full-width CJK) collapse to one entry. Proportional blocks
+emit per-glyph entries up to a 1024-entry cap, sized to cover ASCII + Latin
+extended + Greek + Cyrillic so a common codepoint is not silently dropped.
+Returns `404` for SD-card fonts that expose no interval table; the page then
+falls back to approximate advances. `fontId` here is informational — the header
+value comes from `/api/txt-layout`.
+
+> The cache directory `index.bin` is uploaded to (`/.crosspoint/txt_<hash>/`) is
+> keyed by a 32-bit MurmurHash2 (seed 0) of the book's path. The firmware
+> (`lib/Txt/TxtPathHash.h`) and this page (`murmur2_32()` in
+> `TxtIndexPage.html`) must stay byte-identical or the reader will look in a
+> different directory and silently re-index. `test/path_hash` pins this contract.
 
 ## OPDS Server API
 
