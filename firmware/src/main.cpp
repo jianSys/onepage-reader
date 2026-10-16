@@ -650,6 +650,16 @@ void loop() {
     renderer.displayBuffer(HalDisplay::HALF_REFRESH);
   }
 
+  // Enter the live lock-screen clock when power button is short-pressed with the
+  // LOCK_SCREEN setting. Pushed (not replaced) so any-key exit returns to the
+  // prior screen; guarded against re-launching while the clock is already up.
+  if (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::LOCK_SCREEN &&
+      SETTINGS.lockScreenStyle != CrossPointSettings::LOCK_SCREEN_STYLE::LSK_OFF &&
+      mappedInputManager.wasReleased(MappedInputManager::Button::Power) && !activityManager.isClockActive()) {
+    LOG_DBG("MAIN", "Lock-screen clock entered");
+    activityManager.goToClockLockScreen();
+  }
+
   // Refresh the battery icon when USB is plugged or unplugged.
   // Placed after sleep guards so we never queue a render that won't be processed.
   if (gpio.wasUsbStateChanged()) {

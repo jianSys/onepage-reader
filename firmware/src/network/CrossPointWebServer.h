@@ -121,6 +121,8 @@ class CrossPointWebServer {
   void handleSettingsPage() const;
   void handleGetSettings() const;
   void handlePostSettings();
+  // Phone pushes its wall-clock so the RTC-less board can render the lock clock.
+  void handleSetTime();
 
   // Font management handlers
   void handleFontsPage() const;

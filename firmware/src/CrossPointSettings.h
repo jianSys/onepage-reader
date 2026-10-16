@@ -135,8 +135,27 @@ class CrossPointSettings {
     REFRESH_FREQUENCY_COUNT
   };
 
-  // Short power button press actions
-  enum SHORT_PWRBTN { IGNORE = 0, SLEEP = 1, PAGE_TURN = 2, FORCE_REFRESH = 3, FOOTNOTES = 4, SHORT_PWRBTN_COUNT };
+  // Short power button press actions. LOCK_SCREEN is appended at the END so
+  // the persisted byte indices of the existing options stay stable.
+  enum SHORT_PWRBTN {
+    IGNORE = 0,
+    SLEEP = 1,
+    PAGE_TURN = 2,
+    FORCE_REFRESH = 3,
+    FOOTNOTES = 4,
+    LOCK_SCREEN = 5,
+    SHORT_PWRBTN_COUNT
+  };
+
+  // Lock-screen display styles selected in Settings. Appended so existing
+  // persisted SHORT_PWRBTN bytes stay stable.
+  enum LOCK_SCREEN_STYLE {
+    LSK_OFF = 0,
+    LSK_CLOCK = 1,
+    LSK_CLOCK_DATE = 2,
+    LSK_DASHBOARD = 3,  // oversized seven-segment clock + date line
+    LSK_COUNT
+  };
 
   // Long-press Confirm action while reading an EPUB. The setting cycles through these values.
   // Persisted in settings.json by index: any new function (e.g. dictionary, bookmark) MUST use a
@@ -197,6 +216,13 @@ class CrossPointSettings {
   uint8_t clockUtcOffsetQ = 48;
   // Clock display format: 0 = 24-hour, 1 = 12-hour
   uint8_t clockFormat = 0;
+  // Local timezone for the RTC-less lock-screen clock (OnePage C61): minutes
+  // east of UTC (e.g. 480 = UTC+8). Pushed by the web "校时" button alongside
+  // the epoch; used by HalTime::getLocalHHMM to render local HH:MM.
+  int16_t clockTzOffsetMin = 480;
+  // What the lock screen shows when entered (via SHORT_PWRBTN::LOCK_SCREEN).
+  // OFF disables the lock screen entirely (the short press then does nothing).
+  uint8_t lockScreenStyle = 1;  // LSK_CLOCK
   // Set once an NTP sync succeeds. Used to skip re-syncing on every WiFi connect.
   // Resetting to 0 (e.g. via the web UI) forces a re-sync on next WiFi connect.
   uint8_t clockHasBeenSynced = 0;

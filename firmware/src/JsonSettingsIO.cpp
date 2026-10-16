@@ -149,6 +149,9 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["frontButtonConfirm"] = s.frontButtonConfirm;
   doc["frontButtonLeft"] = s.frontButtonLeft;
   doc["frontButtonRight"] = s.frontButtonRight;
+  // Lock-screen clock timezone (RTC-less boards) — set only from the web "校时"
+  // button, int16 so it can't ride the uint8 SettingsList loop; persisted here.
+  doc["clockTzOffsetMin"] = s.clockTzOffsetMin;
   // Font family — uses dynamic getter/setter in SettingsList so the generic loop skips it.
   doc["fontFamily"] = s.fontFamily;
   // SD card font family name — not in SettingsList, save manually
@@ -272,6 +275,9 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.frontButtonRight =
       clamp(doc["frontButtonRight"] | (uint8_t)S::FRONT_HW_RIGHT, S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_RIGHT);
   CrossPointSettings::validateFrontButtonMapping(s);
+
+  // Lock-screen clock timezone — persisted outside SettingsList (int16).
+  s.clockTzOffsetMin = doc["clockTzOffsetMin"] | (int16_t)480;
 
   // Font family — uses dynamic getter/setter in SettingsList so the generic loop skips it.
   const uint8_t storedFontFamily = doc["fontFamily"] | (uint8_t)0;

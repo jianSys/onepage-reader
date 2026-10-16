@@ -89,6 +89,10 @@ class ActivityManager {
   void goToReader(std::string path);
   void goToSleep(bool fromTimeout = false);
   void goToBoot();
+  // Pushes the live lock-screen clock on top of the current activity so the
+  // short-power-button action can overlay it without tearing down the reading
+  // context; the clock's finish() pops straight back to whatever was showing.
+  void goToClockLockScreen();
   void goToFullScreenMessage(std::string message, EpdFontFamily::Style style = EpdFontFamily::REGULAR);
   void goToCrashReport();
   void goHome(HomeMenuItem initialMenuItem = HomeMenuItem::NONE);
@@ -102,6 +106,9 @@ class ActivityManager {
 
   bool preventAutoSleep() const;
   bool isReaderActivity() const;
+  // True when the lock-screen clock is (or is pending as) the current activity,
+  // so the main-loop entry hook doesn't re-launch it while it's already up.
+  bool isClockActive() const;
   bool skipLoopDelay() const;
   ScreenshotInfo getScreenshotInfo() const;
 

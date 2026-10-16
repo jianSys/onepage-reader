@@ -51,6 +51,9 @@ class Activity {
   virtual bool skipLoopDelay() { return false; }
   virtual bool preventAutoSleep() { return false; }
   virtual bool isReaderActivity() const { return false; }
+  // True for the lock-screen clock so the short-power-button entry hook does
+  // not re-launch it while it is already showing (main.cpp loop()).
+  virtual bool isClockActivity() const { return false; }
   virtual ScreenshotInfo getScreenshotInfo() const { return {}; }
 
   // Start a new activity without destroying the current one

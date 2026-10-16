@@ -5,6 +5,7 @@
 #include <GfxRenderer.h>
 #include <HalGPIO.h>
 #include <HalStorage.h>
+#include <HalTime.h>
 #include <Logging.h>
 #include <WiFi.h>
 #include <esp_task_wdt.h>
@@ -205,6 +206,9 @@ void CrossPointWebServer::begin() {
   server->on("/api/wifi", HTTP_GET, [this] { handleGetWifiNetworks(); });
   server->on("/api/wifi", HTTP_POST, [this] { handlePostWifiNetwork(); });
   server->on("/api/wifi/delete", HTTP_POST, [this] { handleDeleteWifiNetwork(); });
+
+  // Lock-screen clock time sync (phone pushes epoch + timezone offset)
+  server->on("/api/set-time", HTTP_POST, [this] { handleSetTime(); });
 
   server->onNotFound([this] { handleNotFound(); });
   LOG_DBG("WEB", "[MEM] Free heap after route setup: %d bytes", ESP.getFreeHeap());
@@ -1558,6 +1562,44 @@ void CrossPointWebServer::handlePostWifiNetwork() {
   }
 
   server->send(200, "text/plain", "OK");
+}
+
+// Phone pushes its wall-clock so the RTC-less board (OnePage C61 has no DS3231)
+// can render a live lock-screen clock. Body: {"epoch": <sec>, "tzOffsetMin": <min>}.
+// We install epoch into the ESP32 system clock (HalTime -> settimeofday) and
+// persist the offset; the SoC's internal RTC keeps counting across deep sleep.
+void CrossPointWebServer::handleSetTime() {
+  if (!server->hasArg("plain")) {
+    server->send(400, "text/plain", "Missing JSON body");
+    return;
+  }
+
+  const String body = server->arg("plain");
+  JsonDocument doc;
+  const DeserializationError err = deserializeJson(doc, body);
+  if (err) {
+    server->send(400, "text/plain", String("Invalid JSON: ") + err.c_str());
+    return;
+  }
+
+  if (!doc["epoch"].is<uint32_t>() && !doc["epoch"].is<int>()) {
+    server->send(400, "text/plain", "epoch is required");
+    return;
+  }
+  const uint32_t epoch = doc["epoch"].as<uint32_t>();
+  if (epoch < HalTime::MIN_VALID_EPOCH) {
+    server->send(400, "text/plain", "epoch too small");
+    return;
+  }
+  const int16_t tzOffsetMin = doc["tzOffsetMin"] | (int16_t)480;
+
+  HalTime::setTimeFromEpoch(epoch, tzOffsetMin);
+  SETTINGS.clockTzOffsetMin = tzOffsetMin;
+  SETTINGS.saveToFile();
+
+  LOG_DBG("WEB", "Clock set via /api/set-time (epoch=%lu, tz=%d min)", static_cast<unsigned long>(epoch),
+          static_cast<int>(tzOffsetMin));
+  server->send(200, "application/json", "{\"ok\":true}");
 }
 
 // Uses POST (not HTTP DELETE) because ESP32 WebServer doesn't support DELETE with body.

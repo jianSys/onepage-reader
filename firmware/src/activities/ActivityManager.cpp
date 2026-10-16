@@ -7,6 +7,7 @@
 
 #include "OpdsServerStore.h"
 #include "boot_sleep/BootActivity.h"
+#include "boot_sleep/ClockLockScreen.h"
 #include "boot_sleep/SleepActivity.h"
 #include "browser/OpdsBookBrowserActivity.h"
 #include "home/CrashActivity.h"
@@ -209,6 +210,11 @@ void ActivityManager::goToSleep(bool fromTimeout) {
 
 void ActivityManager::goToBoot() { replaceActivity(std::make_unique<BootActivity>(renderer, mappedInput)); }
 
+void ActivityManager::goToClockLockScreen() {
+  // Overlay (push), not replace: finish() returns to the prior screen.
+  pushActivity(std::make_unique<ClockLockScreen>(renderer, mappedInput));
+}
+
 void ActivityManager::goToFullScreenMessage(std::string message, EpdFontFamily::Style style) {
   replaceActivity(std::make_unique<FullScreenMessageActivity>(renderer, mappedInput, std::move(message), style));
 }
@@ -260,6 +266,8 @@ bool ActivityManager::isReaderActivity() const {
                      [](const auto& activity) { return activity->isReaderActivity(); }) ||
          (currentActivity && currentActivity->isReaderActivity());
 }
+
+bool ActivityManager::isClockActive() const { return currentActivity && currentActivity->isClockActivity(); }
 
 bool ActivityManager::skipLoopDelay() const { return currentActivity && currentActivity->skipLoopDelay(); }
 
