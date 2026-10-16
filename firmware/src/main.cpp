@@ -239,12 +239,14 @@ void enterDeepSleep(bool fromTimeout = false) {
   powerManager.startDeepSleep(gpio);
 }
 
-void setupDisplayAndFonts(bool seamless = false) {
+// Panel, renderer and the flash-resident (builtin) fonts only — deliberately
+// SD-free so the boot splash can be painted before any card access. See
+// setupSdFonts() for the slow, SD-dependent half of font bring-up.
+void setupDisplayAndBuiltinFonts(bool seamless = false) {
   display.begin(seamless);
   renderer.begin();
   activityManager.begin();
   LOG_DBG("MAIN", "Display initialized");
-
 
   // Initialize font decompressor for compressed reader fonts
   if (!fontDecompressor.init()) {
@@ -266,7 +268,11 @@ void setupDisplayAndFonts(bool seamless = false) {
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
+}
 
+// The SD-dependent half of font bring-up: card font discovery plus the CJK UI
+// fallback. Runs while the splash is already on screen so its cost is hidden.
+void setupSdFonts() {
   // Discover and load SD card fonts
   sdFontSystem.begin(renderer);
 
@@ -332,7 +338,8 @@ void setup() {
     // loading here because on the reboot path they'll be re-read from a healthy
     // SD; keeping the early return also avoids touching SD-dependent stores
     // (recent/opds/wifi/koreader) or BLE init while the volume isn't there.
-    setupDisplayAndFonts(isSilentReboot);
+    setupDisplayAndBuiltinFonts(isSilentReboot);
+    setupSdFonts();
     activityManager.replaceActivity(std::make_unique<NoSdCardActivity>(renderer, mappedInputManager));
     waitForPowerRelease();
     allowSleepAt = millis() + 2000;
@@ -355,9 +362,74 @@ void setup() {
   SETTINGS.frontButtonLeft = CrossPointSettings::FRONT_HW_LEFT;
   SETTINGS.frontButtonRight = CrossPointSettings::FRONT_HW_RIGHT;
 #endif
+  // Read only what the wake gate and the splash need up front (SETTINGS powers
+  // getPowerButtonDuration/shortPwrBtn, APP_STATE the boot-presentation choice,
+  // I18N the splash strings). The remaining stores and BLE bring-up are
+  // deferred below until the logo is physically on screen.
   APP_STATE.loadFromFile();
-  RECENT_BOOKS.loadFromFile();
   I18N.setLanguage(static_cast<Language>(SETTINGS.language));
+
+  const auto wakeupReason = gpio.getWakeupReason();
+  switch (wakeupReason) {
+    case HalGPIO::WakeupReason::PowerButton:
+      LOG_DBG("MAIN", "Verifying power button press duration");
+      gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
+                                   SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP);
+      break;
+    case HalGPIO::WakeupReason::AfterUSBPower:
+      // If USB power caused a cold boot, go back to sleep
+      LOG_DBG("MAIN", "Wakeup reason: After USB Power");
+      powerManager.startDeepSleep(gpio);
+      break;
+    case HalGPIO::WakeupReason::AfterFlash:
+      // After flashing, just proceed to boot
+    case HalGPIO::WakeupReason::Other:
+    default:
+      break;
+  }
+
+  // First serial output only here to avoid timing inconsistencies for power button press duration verification
+  LOG_DBG("MAIN", "Starting CrossPoint version " CROSSPOINT_VERSION);
+
+  // Resolve the single boot-presentation decision. Skipping the splash also
+  // skips the panel-clearing pass and the X3 initial-full-sync arming (see
+  // HalDisplay::begin), so the first paint is FAST_REFRESH (~500ms) over the
+  // retained frame and input dispatches against a visible UI.
+  const BootResume resume = isSilentReboot              ? BootResume::Silent
+                            : !APP_STATE.showBootScreen ? BootResume::QuickResume
+                                                        : BootResume::Splash;
+
+  setupDisplayAndBuiltinFonts(resume != BootResume::Splash);
+
+  switch (resume) {
+    case BootResume::Silent:
+      // Splash skipped: the routing block below picks the target activity; the
+      // panel keeps showing the pre-reboot popup until that first paint lands.
+      break;
+    case BootResume::QuickResume:
+      // One-shot flag: re-arm the splash for the next non-quick-resume boot. Save
+      // before any painting so a hang in the blocking paint path can't strand
+      // us in a quick-resume-with-no-frame loop on the next boot.
+      APP_STATE.showBootScreen = true;
+      APP_STATE.saveToFile();
+      if (loadSleepFrameBuffer()) {
+        // Frame restored: swap the sleep moon for the loading icon.
+        const auto pageHeight = renderer.getScreenHeight();
+        renderer.drawImage(LoadingIcon, 0, pageHeight - LOADINGICON_HEIGHT, LOADINGICON_WIDTH, LOADINGICON_HEIGHT);
+        renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      } else {
+        activityManager.goToBoot();  // frame file missing, fall back to the splash
+      }
+      break;
+    case BootResume::Splash:
+      activityManager.goToBoot();  // synchronous onEnter: the logo is on screen when this returns
+      break;
+  }
+
+  // Everything slow from here runs behind the splash logo (or the restored
+  // sleep frame on QuickResume), so "pressed the power button" gets visible
+  // feedback ~1-2s earlier than when these ran before the first paint.
+  RECENT_BOOKS.loadFromFile();
 #ifdef ONEPAGE_C61
   // BLE page-turner: only start at boot if the user's on/off switch is ON. Load
   // the bound device + learned patterns so it reconnects to the paired remote.
@@ -386,29 +458,12 @@ void setup() {
   WORDBOOK.loadFromFile();
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
-
-  const auto wakeupReason = gpio.getWakeupReason();
-  switch (wakeupReason) {
-    case HalGPIO::WakeupReason::PowerButton:
-      LOG_DBG("MAIN", "Verifying power button press duration");
-      gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
-                                   SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP);
-      break;
-    case HalGPIO::WakeupReason::AfterUSBPower:
-      // If USB power caused a cold boot, go back to sleep
-      LOG_DBG("MAIN", "Wakeup reason: After USB Power");
-      powerManager.startDeepSleep(gpio);
-      break;
-    case HalGPIO::WakeupReason::AfterFlash:
-      // After flashing, just proceed to boot
-    case HalGPIO::WakeupReason::Other:
-    default:
-      break;
-  }
+  setupSdFonts();
 
   // Recovery firmware mode: hold left side button (BTN_UP) together with the power button at
   // boot to skip directly to the SD-card firmware update screen. Useful on devices where USB
-  // flashing has been locked down (e.g. recent X3 firmware).
+  // flashing has been locked down (e.g. recent X3 firmware). Checked after the splash paints
+  // so the settle wait happens behind the logo.
   bool recoveryFirmwareMode = false;
   if (wakeupReason == HalGPIO::WakeupReason::PowerButton) {
     // Refresh the cached button state a few times — isPressed() needs ~half a second to settle
@@ -423,44 +478,6 @@ void setup() {
       recoveryFirmwareMode = true;
       LOG_INF("MAIN", "Recovery firmware mode (UP + POWER held at boot)");
     }
-  }
-
-  // First serial output only here to avoid timing inconsistencies for power button press duration verification
-  LOG_DBG("MAIN", "Starting CrossPoint version " CROSSPOINT_VERSION);
-
-  // Resolve the single boot-presentation decision. Skipping the splash also
-  // skips the panel-clearing pass and the X3 initial-full-sync arming (see
-  // HalDisplay::begin), so the first paint is FAST_REFRESH (~500ms) over the
-  // retained frame and input dispatches against a visible UI.
-  const BootResume resume = isSilentReboot              ? BootResume::Silent
-                            : !APP_STATE.showBootScreen ? BootResume::QuickResume
-                                                        : BootResume::Splash;
-
-  setupDisplayAndFonts(resume != BootResume::Splash);
-
-  switch (resume) {
-    case BootResume::Silent:
-      // Splash skipped: the routing block below picks the target activity; the
-      // panel keeps showing the pre-reboot popup until that first paint lands.
-      break;
-    case BootResume::QuickResume:
-      // One-shot flag: re-arm the splash for the next non-quick-resume boot. Save
-      // before any painting so a hang in the blocking paint path can't strand
-      // us in a quick-resume-with-no-frame loop on the next boot.
-      APP_STATE.showBootScreen = true;
-      APP_STATE.saveToFile();
-      if (loadSleepFrameBuffer()) {
-        // Frame restored: swap the sleep moon for the loading icon.
-        const auto pageHeight = renderer.getScreenHeight();
-        renderer.drawImage(LoadingIcon, 0, pageHeight - LOADINGICON_HEIGHT, LOADINGICON_WIDTH, LOADINGICON_HEIGHT);
-        renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-      } else {
-        activityManager.goToBoot();  // frame file missing, fall back to the splash
-      }
-      break;
-    case BootResume::Splash:
-      activityManager.goToBoot();
-      break;
   }
 
   if (recoveryFirmwareMode) {
