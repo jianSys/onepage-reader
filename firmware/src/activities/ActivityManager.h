@@ -16,7 +16,16 @@
 class Activity;    // forward declaration
 class RenderLock;  // forward declaration
 
-enum class HomeMenuItem { NONE, FILE_BROWSER, RECENTS, OPDS_BROWSER, FILE_TRANSFER, SETTINGS_MENU, WORD_BOOK };
+enum class HomeMenuItem {
+  NONE,
+  FILE_BROWSER,
+  RECENTS,
+  OPDS_BROWSER,
+  FILE_TRANSFER,
+  SETTINGS_MENU,
+  WORD_BOOK,
+  TOOLS,
+};
 
 /**
  * ActivityManager
@@ -85,6 +94,8 @@ class ActivityManager {
   void goToFileBrowser(std::string path = {});
   void goToRecentBooks();
   void goToWordBook();
+  // Opens the on-device utilities hub (Pomodoro, and future tools).
+  void goToTools();
   void goToBrowser();
   void goToReader(std::string path);
   void goToSleep(bool fromTimeout = false);

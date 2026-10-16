@@ -18,6 +18,7 @@
 #include "reader/ReaderActivity.h"
 #include "settings/OpdsServerListActivity.h"
 #include "settings/SettingsActivity.h"
+#include "tools/ToolsMenuActivity.h"
 #include "util/FullScreenMessageActivity.h"
 #include "wordbook/WordBookActivity.h"
 
@@ -189,6 +190,10 @@ void ActivityManager::goToWordBook() {
   replaceActivity(std::make_unique<WordBookActivity>(renderer, mappedInput));
 }
 
+void ActivityManager::goToTools() {
+  replaceActivity(std::make_unique<ToolsMenuActivity>(renderer, mappedInput));
+}
+
 void ActivityManager::goToBrowser() {
   const auto& servers = OPDS_STORE.getServers();
   // Skip the server picker when there's only one server configured
@@ -234,6 +239,8 @@ void ActivityManager::goHome(HomeMenuItem initialMenuItem) {
       initialMenuItem = HomeMenuItem::SETTINGS_MENU;
     } else if (activityName == "WordBook") {
       initialMenuItem = HomeMenuItem::WORD_BOOK;
+    } else if (activityName == "ToolsMenu") {
+      initialMenuItem = HomeMenuItem::TOOLS;
     }
   }
   replaceActivity(std::make_unique<HomeActivity>(renderer, mappedInput, initialMenuItem));
