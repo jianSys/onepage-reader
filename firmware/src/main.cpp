@@ -24,6 +24,9 @@
 #include "CjkUiFontSystem.h"
 #ifdef ONEPAGE_C61
 #include "bluetooth/BleHidHost.h"
+#include "bluetooth/BleAncsClient.h"
+#include "activities/tools/NotificationActivity.h"
+#include "NotificationStore.h"
 #endif
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
@@ -227,6 +230,9 @@ void enterDeepSleep(bool fromTimeout = false) {
   // controller isn't left running against a cut power rail on wake).
   if (BLE_HID_HOST.isStarted()) {
     BLE_HID_HOST.stop();
+  }
+  if (BLE_ANCS.isStarted()) {
+    BLE_ANCS.stop();
   }
 #endif
 
@@ -433,7 +439,14 @@ void setup() {
 #ifdef ONEPAGE_C61
   // BLE page-turner: only start at boot if the user's on/off switch is ON. Load
   // the bound device + learned patterns so it reconnects to the paired remote.
-  if (SETTINGS.blePageTurnerOn) {
+  // BLE: the page-turner and phone notifications are mutually exclusive — NimBLE
+  // runs a single host. Notifications take precedence when both are enabled.
+  if (SETTINGS.notificationsEnabled && !SETTINGS.blePageTurnerOn) {
+    if (SETTINGS.notifPeerValid) {
+      BLE_ANCS.setPeer(SETTINGS.notifPeerAddr, SETTINGS.notifPeerAddrType, SETTINGS.notifPeerName);
+    }
+    BLE_ANCS.start();
+  } else if (SETTINGS.blePageTurnerOn) {
     BleReportPattern fwd;
     fwd.attrHandle = SETTINGS.bleFwdAttrHandle;
     fwd.len = SETTINGS.bleFwdLen;
@@ -551,6 +564,19 @@ void loop() {
     }
     if (bleActions & (1u << static_cast<uint8_t>(BleHidAction::PageBack))) {
       gpio.injectPress(HalGPIO::BTN_UP);
+    }
+  }
+  // Phone notifications: pull captured ANCS notifications into the store.
+  {
+    const int added = BLE_ANCS.drainPending(NOTIFICATION_STORE);
+    if (added > 0) {
+      LOG_INF("BLEANCS", "%d notification(s) stored (total=%d unread=%d)", added,
+              NOTIFICATION_STORE.count(), NOTIFICATION_STORE.unreadCount());
+      // Refresh the notification list live while it is on screen. A status-bar
+      // unread badge is a future enhancement; the store already tracks unread.
+      if (NotificationActivity::isForeground()) {
+        NotificationActivity::refreshForeground();
+      }
     }
   }
 #endif

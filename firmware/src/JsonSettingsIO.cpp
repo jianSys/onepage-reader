@@ -81,6 +81,10 @@ bool JsonSettingsIO::saveState(const CrossPointState& s, const char* path) {
   doc["totalReadingSeconds"] = s.totalReadingSeconds;
   doc["totalPagesTurns"] = s.totalPagesTurns;
   doc["readingSessions"] = s.readingSessions;
+  JsonArray dayOrdArr = doc["readingDayOrdinals"].to<JsonArray>();
+  for (uint32_t v : s.readingDayOrdinals) dayOrdArr.add(v);
+  JsonArray daySecArr = doc["readingDaySeconds"].to<JsonArray>();
+  for (uint32_t v : s.readingDaySeconds) daySecArr.add(v);
 
   String json;
   serializeJson(doc, json);
@@ -119,6 +123,17 @@ bool JsonSettingsIO::loadState(CrossPointState& s, const char* json) {
   s.totalReadingSeconds = doc["totalReadingSeconds"] | static_cast<uint32_t>(0);
   s.totalPagesTurns = doc["totalPagesTurns"] | static_cast<uint32_t>(0);
   s.readingSessions = doc["readingSessions"] | static_cast<uint32_t>(0);
+  s.readingDayOrdinals.clear();
+  s.readingDaySeconds.clear();
+  JsonArrayConst dayOrdArr = doc["readingDayOrdinals"];
+  JsonArrayConst daySecArr = doc["readingDaySeconds"];
+  if (!dayOrdArr.isNull() && !daySecArr.isNull()) {
+    const size_t n = std::min(dayOrdArr.size(), daySecArr.size());
+    for (size_t i = 0; i < n; i++) {
+      s.readingDayOrdinals.push_back(dayOrdArr[i] | static_cast<uint32_t>(0));
+      s.readingDaySeconds.push_back(daySecArr[i] | static_cast<uint32_t>(0));
+    }
+  }
   return true;
 }
 
@@ -187,6 +202,16 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
     doc["bleAddr"] = addrHex;
     doc["bleAddrType"] = s.bleDeviceAddrType;
     if (s.bleDeviceName[0]) doc["bleName"] = s.bleDeviceName;
+  }
+  // Phone notifications (iOS ANCS) — bonded iPhone for auto-reconnect.
+  doc["notificationsEnabled"] = s.notificationsEnabled;
+  if (s.notifPeerValid) {
+    char addrHex[13];
+    snprintf(addrHex, sizeof(addrHex), "%02X%02X%02X%02X%02X%02X", s.notifPeerAddr[0], s.notifPeerAddr[1],
+             s.notifPeerAddr[2], s.notifPeerAddr[3], s.notifPeerAddr[4], s.notifPeerAddr[5]);
+    doc["notifAddr"] = addrHex;
+    doc["notifAddrType"] = s.notifPeerAddrType;
+    if (s.notifPeerName[0]) doc["notifName"] = s.notifPeerName;
   }
 #endif
 
@@ -341,6 +366,27 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
       }
     }
   }
+  // Phone notifications (iOS ANCS) — bonded iPhone for auto-reconnect.
+  s.notificationsEnabled = clamp(doc["notificationsEnabled"] | (uint8_t)0, (uint8_t)2, (uint8_t)0);
+  {
+    const char* addrHex = doc["notifAddr"] | (const char*)nullptr;
+    s.notifPeerValid = 0;
+    if (addrHex && strlen(addrHex) == 12) {
+      bool ok = true;
+      for (int i = 0; i < 6; i++) {
+        unsigned b = 0;
+        if (sscanf(addrHex + i * 2, "%2x", &b) != 1) { ok = false; break; }
+        s.notifPeerAddr[i] = static_cast<uint8_t>(b);
+      }
+      if (ok) {
+        s.notifPeerValid = 1;
+        s.notifPeerAddrType = doc["notifAddrType"] | (uint8_t)0;
+        const char* nm = doc["notifName"] | "";
+        strncpy(s.notifPeerName, nm, sizeof(s.notifPeerName) - 1);
+        s.notifPeerName[sizeof(s.notifPeerName) - 1] = '\0';
+      }
+    }
+  }
 #endif
 
   LOG_DBG("CPS", "Settings loaded from file");
@@ -407,6 +453,8 @@ bool JsonSettingsIO::saveRecentBooks(const RecentBooksStore& store, const char* 
     obj["title"] = book.title;
     obj["author"] = book.author;
     obj["coverBmpPath"] = book.coverBmpPath;
+    obj["progress"] = book.progressPercent;
+    obj["lastRead"] = static_cast<int64_t>(book.lastRead);
   }
 
   String json;
@@ -431,6 +479,8 @@ bool JsonSettingsIO::loadRecentBooks(RecentBooksStore& store, const char* json) 
     book.title = obj["title"] | std::string("");
     book.author = obj["author"] | std::string("");
     book.coverBmpPath = obj["coverBmpPath"] | std::string("");
+    book.progressPercent = obj["progress"] | 0;
+    book.lastRead = static_cast<time_t>(obj["lastRead"] | 0);
     store.recentBooks.push_back(book);
   }
 
