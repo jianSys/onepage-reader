@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <time.h>
 
 namespace {
 constexpr uint8_t RECENT_BOOKS_FILE_VERSION = 3;
@@ -26,15 +27,24 @@ void RecentBooksStore::addBook(const std::string& path, const std::string& title
   // Drop stale entries first so a new add can't evict a valid book in their stead.
   pruneMissing();
 
-  // Remove existing entry if present
+  // Remove existing entry if present, preserving its reading progress.
+  int existingProgress = 0;
   auto it =
       std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
   if (it != recentBooks.end()) {
+    existingProgress = it->progressPercent;
     recentBooks.erase(it);
   }
 
-  // Add to front
-  recentBooks.insert(recentBooks.begin(), {path, title, author, coverBmpPath});
+  // Add to front; refresh the "last opened" stamp, keep prior progress until updated on exit.
+  RecentBook book;
+  book.path = path;
+  book.title = title;
+  book.author = author;
+  book.coverBmpPath = coverBmpPath;
+  book.progressPercent = existingProgress;
+  book.lastRead = time(nullptr);
+  recentBooks.insert(recentBooks.begin(), book);
 
   // Trim to max size
   if (recentBooks.size() > MAX_RECENT_BOOKS) {
@@ -42,6 +52,18 @@ void RecentBooksStore::addBook(const std::string& path, const std::string& title
   }
 
   saveToFile();
+}
+
+void RecentBooksStore::setProgress(const std::string& path, int percent) {
+  auto it =
+      std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
+  if (it == recentBooks.end()) {
+    return;
+  }
+  it->progressPercent = std::clamp(percent, 0, 100);
+  if (!saveToFile()) {
+    LOG_ERR("RBS", "Failed to persist reading progress for: %s", path.c_str());
+  }
 }
 
 void RecentBooksStore::updateBook(const std::string& path, const std::string& title, const std::string& author,

@@ -54,6 +54,13 @@ void XtcReaderActivity::onExit() {
   APP_STATE.commitReadingSession();
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();
+
+  // Persist reading progress so the bookshelf can show how far along the book is.
+  if (xtc && xtc->getPageCount() > 0) {
+    const uint32_t clamped = (currentPage >= xtc->getPageCount()) ? (xtc->getPageCount() - 1) : currentPage;
+    RECENT_BOOKS.setProgress(xtc->getPath(), static_cast<int>(xtc->calculateProgress(clamped) * 100.0f));
+  }
+
   xtc.reset();
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <ctime>
 #include <string>
 #include <vector>
 
@@ -7,6 +8,8 @@ struct RecentBook {
   std::string title;
   std::string author;
   std::string coverBmpPath;
+  int progressPercent = 0;  // 0-100; last known reading progress (0 = unknown)
+  time_t lastRead = 0;      // epoch seconds when the book was last opened (0 = unknown)
 
   bool operator==(const RecentBook& other) const { return path == other.path; }
 };
@@ -33,6 +36,9 @@ class RecentBooksStore {
   // Add a book to the recent list (moves to front if already exists)
   void addBook(const std::string& path, const std::string& title, const std::string& author,
                const std::string& coverBmpPath);
+
+  // Update the stored reading progress (0-100) for a book and persist it.
+  void setProgress(const std::string& path, int percent);
 
   void updateBook(const std::string& path, const std::string& title, const std::string& author,
                   const std::string& coverBmpPath);

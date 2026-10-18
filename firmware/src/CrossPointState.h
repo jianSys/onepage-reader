@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class CrossPointState {
   // Static instance
@@ -17,15 +18,22 @@ class CrossPointState {
   bool lastSleepFromReader = false;
   bool showBootScreen = true;
 
-  // Reading stats, accumulated per-session. The OnePage C61 has no RTC/NTP, so we
-  // cannot track calendar days — these only ever count *within* a reading session
-  // using millis(), summed into the totals below when the session is committed on
-  // reader exit (which also runs before deep sleep, since goToSleep() invokes the
-  // outgoing activity's onExit()). The totals persist across reboots; an
-  // in-progress session is lost only on power loss / crash.
+  // Reading statistics.
+  //
+  // The three totals below accumulate per-session and persist across reboots; an
+  // in-progress session is lost only on power loss / crash. The C61 keeps a wall
+  // clock via its internal RTC (seeded by the web companion's POST /api/set-time
+  // or SNTP), so we additionally bucket reading time per UTC day
+  // (readingDayOrdinals/Seconds) to power the 7-day chart on the stats page.
   uint32_t totalReadingSeconds = 0;
   uint32_t totalPagesTurns = 0;
   uint32_t readingSessions = 0;
+
+  // Per-day reading time (seconds), bucketed by UTC day ordinal (time(nullptr)/86400).
+  // readingDayOrdinals[i] pairs with readingDaySeconds[i]. Empty until the first
+  // session is committed after a successful time sync.
+  std::vector<uint32_t> readingDayOrdinals;
+  std::vector<uint32_t> readingDaySeconds;
 
   // In-memory session bookkeeping (NOT persisted). millis() is monotonic only
   // within a single boot, so we snapshot the start and sum deltas at commit time.
@@ -36,6 +44,13 @@ class CrossPointState {
   void startReadingSession();
   void bumpPageTurn();
   void commitReadingSession();
+
+  // UTC day ordinal for "now" (time(nullptr)/86400), or 0 when the clock is unset.
+  static uint32_t currentDayOrdinal();
+  // Add `seconds` of reading time to the current day's bucket (persisted on save).
+  void recordReadingSeconds(uint32_t seconds);
+  // Total reading seconds recorded for a specific day ordinal (0 if none).
+  uint32_t readingSecondsForDay(uint32_t dayOrdinal) const;
 
   // Returns true if idx was shown within the last checkCount picks.
   // Walks backwards from the most recently written slot.

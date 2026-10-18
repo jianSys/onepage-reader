@@ -7,39 +7,12 @@
 #include <string>
 
 #include "MappedInputManager.h"
-#include "CalendarActivity.h"
-#include "PomodoroActivity.h"
+#include "ToolApp.h"
+#include "ToolsUi.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
-namespace {
-// Tool rows. Extend by appending here and handling the index in launchTool().
-enum ToolRow { ROW_POMODORO = 0, ROW_CALENDAR, ROW_COUNT };
-
-const char* toolTitle(int row) {
-  switch (row) {
-    case ROW_POMODORO:
-      return tr(STR_POMODORO);
-    case ROW_CALENDAR:
-      return tr(STR_CALENDAR);
-    default:
-      return "";
-  }
-}
-
-const char* toolSubtitle(int row) {
-  switch (row) {
-    case ROW_POMODORO:
-      return tr(STR_POMODORO_HINT);
-    case ROW_CALENDAR:
-      return tr(STR_CALENDAR_HINT);
-    default:
-      return "";
-  }
-}
-}  // namespace
-
-int ToolsMenuActivity::getToolCount() const { return ROW_COUNT; }
+int ToolsMenuActivity::getToolCount() const { return static_cast<int>(getToolApps().size()); }
 
 void ToolsMenuActivity::onEnter() {
   Activity::onEnter();
@@ -48,7 +21,8 @@ void ToolsMenuActivity::onEnter() {
 }
 
 void ToolsMenuActivity::loop() {
-  const int rows = getToolCount();
+  const auto apps = getToolApps();
+  const int rows = static_cast<int>(apps.size());
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoHome();
@@ -57,10 +31,8 @@ void ToolsMenuActivity::loop() {
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     auto handler = [this](const ActivityResult&) { requestUpdate(); };
-    if (selectorIndex == ROW_POMODORO) {
-      startActivityForResult(std::make_unique<PomodoroActivity>(renderer, mappedInput), std::move(handler));
-    } else if (selectorIndex == ROW_CALENDAR) {
-      startActivityForResult(std::make_unique<CalendarActivity>(renderer, mappedInput), std::move(handler));
+    if (selectorIndex >= 0 && selectorIndex < rows) {
+      startActivityForResult(apps[selectorIndex].factory(renderer, mappedInput), std::move(handler));
     }
     return;
   }
@@ -85,11 +57,18 @@ void ToolsMenuActivity::render(RenderLock&&) {
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_TOOLS));
 
   const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
-  const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
+  const int contentBottom = pageHeight - (metrics.buttonHintsHeight + metrics.verticalSpacing);
+  ToolsUi::drawTracked(renderer, SMALL_FONT_ID, ToolsUi::eyebrow(tr(STR_TOOLS), "TOOLS").c_str(),
+                       metrics.contentSidePadding, contentTop, 2, true);
 
-  GUI.drawList(renderer, Rect{0, contentTop, pageWidth, contentHeight}, getToolCount(), selectorIndex,
-               [](int index) -> std::string { return toolTitle(index); },
-               [](int index) -> std::string { return toolSubtitle(index); },
+  const int listTop = contentTop + 24;
+  const int contentHeight = contentBottom - listTop;
+
+  const auto apps = getToolApps();
+
+  GUI.drawList(renderer, Rect{0, listTop, pageWidth, contentHeight}, static_cast<int>(apps.size()), selectorIndex,
+               [&apps](int index) -> std::string { return I18N[apps[index].titleId]; },
+               [&apps](int index) -> std::string { return I18N[apps[index].subtitleId]; },
                [](int) -> UIIcon { return UIIcon::None; }, nullptr);
 
   const auto labels = mappedInput.mapLabels(tr(STR_HOME), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));

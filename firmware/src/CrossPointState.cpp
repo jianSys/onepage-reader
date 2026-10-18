@@ -7,6 +7,7 @@
 #include <Serialization.h>
 
 #include <algorithm>
+#include <time.h>
 
 namespace {
 constexpr uint8_t STATE_FILE_VERSION = 4;
@@ -44,11 +45,46 @@ void CrossPointState::bumpPageTurn() {
 
 void CrossPointState::commitReadingSession() {
   if (!sessionActive) return;
-  totalReadingSeconds += static_cast<uint32_t>((millis() - sessionStartMillis) / 1000);
+  const uint32_t sessionSeconds = static_cast<uint32_t>((millis() - sessionStartMillis) / 1000);
+  totalReadingSeconds += sessionSeconds;
   totalPagesTurns += sessionTurns;
   readingSessions++;
+  recordReadingSeconds(sessionSeconds);
   sessionActive = false;
   sessionTurns = 0;
+}
+
+uint32_t CrossPointState::currentDayOrdinal() {
+  const time_t now = time(nullptr);
+  if (static_cast<uint32_t>(now) < 1600000000u) return 0;
+  return static_cast<uint32_t>(now) / 86400u;
+}
+
+void CrossPointState::recordReadingSeconds(uint32_t seconds) {
+  if (seconds == 0) return;
+  const uint32_t day = currentDayOrdinal();
+  for (size_t i = 0; i < readingDayOrdinals.size(); i++) {
+    if (readingDayOrdinals[i] == day) {
+      readingDaySeconds[i] += seconds;
+      return;
+    }
+  }
+  readingDayOrdinals.push_back(day);
+  readingDaySeconds.push_back(seconds);
+  // Bound growth: drop buckets older than ~180 days.
+  constexpr uint32_t kMaxAgeDays = 180;
+  while (!readingDayOrdinals.empty() && day > kMaxAgeDays &&
+         readingDayOrdinals.front() < day - kMaxAgeDays) {
+    readingDayOrdinals.erase(readingDayOrdinals.begin());
+    readingDaySeconds.erase(readingDaySeconds.begin());
+  }
+}
+
+uint32_t CrossPointState::readingSecondsForDay(uint32_t dayOrdinal) const {
+  for (size_t i = 0; i < readingDayOrdinals.size(); i++) {
+    if (readingDayOrdinals[i] == dayOrdinal) return readingDaySeconds[i];
+  }
+  return 0;
 }
 
 bool CrossPointState::saveToFile() const {

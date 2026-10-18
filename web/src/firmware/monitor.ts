@@ -23,6 +23,19 @@ export class SerialMonitor {
   private running = false;
 
   /** Open the serial stream and start pumping decoded text into onData. */
+  // The flasher (esptool-js) opens the port and may hand it back while it is
+  // still "open" (reader lock not released) or while its reader is still
+  // attached. Closing it here lets us re-open cleanly.
+  private async releasePort(port: SerialPort): Promise<void> {
+    try {
+      if (port.readable || port.writable) {
+        await port.close();
+      }
+    } catch {
+      /* ignore — if a foreign reader is still attached the open() guard below copes */
+    }
+  }
+
   async start(opts: MonitorOpts): Promise<void> {
     if (this.running) return;
     if (!('serial' in navigator)) throw new Error('Web Serial unavailable');
@@ -35,23 +48,52 @@ export class SerialMonitor {
     }
     this.port = port;
 
-    // Device may still be re-enumerating after the post-flash reboot (~3s window).
+    // Release any lingering lock from the flasher before re-opening.
+    await this.releasePort(port);
+
+    // The device may still be re-enumerating after the post-flash reboot. It can
+    // also re-enumerate onto a new USB address, leaving the handed-over handle
+    // stale (re-open keeps failing). Retry the open; if a handed-over handle
+    // stays dead, re-request a fresh port from the user once.
     let lastErr: unknown = null;
-    for (let attempt = 0; attempt < 8; attempt++) {
+    let opened = false;
+    let triedFresh = false;
+    for (let attempt = 0; attempt < 15; attempt++) {
       try {
-        // 115200 is ignored by USB-Serial/JTAG (CDC carries no baud signalling)
-        // but must match the firmware UART baud for DTR/RTS-board variants.
-        await port.open({ baudRate: 115200 });
+        if (!this.port.readable) {
+          // 115200 is ignored by USB-Serial/JTAG (CDC carries no baud signalling)
+          // but must match the firmware UART baud for DTR/RTS-board variants.
+          await this.port.open({ baudRate: 115200 });
+        }
+        opened = true;
         lastErr = null;
         break;
       } catch (err) {
         lastErr = err;
-        await new Promise((r) => setTimeout(r, 400));
+        const msg = (err as Error)?.message ?? '';
+        // Stale handed-over handle (device re-enumerated): grab a fresh one once.
+        if (opts.port && !triedFresh && /Failed to open serial port|already open/i.test(msg)) {
+          triedFresh = true;
+          try {
+            const fresh = await navigator.serial.requestPort();
+            this.port = fresh;
+            port = fresh;
+            await this.releasePort(port);
+            continue;
+          } catch {
+            /* user dismissed the picker; fall through to the remaining retries */
+          }
+        }
+        await new Promise((r) => setTimeout(r, 500));
       }
     }
-    if (lastErr) {
+    if (!opened) {
       this.port = null;
-      throw lastErr instanceof Error ? lastErr : new Error('Could not open serial port');
+      const base = lastErr instanceof Error ? lastErr.message : 'Could not open serial port';
+      throw new Error(
+        `${base}. If the device reset or another app holds the port, unplug & ` +
+          'replug the USB cable (or close other serial tools) and click Monitor again.'
+      );
     }
 
     const info = port.getInfo?.() ?? {};
@@ -71,7 +113,19 @@ export class SerialMonitor {
     const port = this.port;
     if (!port) return;
     while (this.running && port.readable) {
-      const reader = port.readable.getReader();
+      let reader: ReadableStreamDefaultReader<Uint8Array>;
+      try {
+        reader = port.readable.getReader();
+      } catch {
+        // Flasher left its own reader attached; force-close and reopen once.
+        await this.releasePort(port);
+        try {
+          await port.open({ baudRate: 115200 });
+        } catch {
+          break;
+        }
+        continue;
+      }
       this.reader = reader;
       try {
         for (;;) {

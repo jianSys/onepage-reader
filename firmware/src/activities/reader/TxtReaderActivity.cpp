@@ -60,6 +60,12 @@ void TxtReaderActivity::onExit() {
   APP_STATE.commitReadingSession();
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();
+
+  // Persist reading progress so the bookshelf can show how far along the book is.
+  if (txt && totalPages > 0) {
+    RECENT_BOOKS.setProgress(txt->getPath(), (currentPage + 1) * 100 / totalPages);
+  }
+
   txt.reset();
 }
 
