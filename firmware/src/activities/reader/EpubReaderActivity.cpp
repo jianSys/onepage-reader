@@ -269,7 +269,10 @@ void EpubReaderActivity::enterWordSelect() {
       if (w.empty() || w == " " || w == "\n" || w == "\t") continue;
       WordHit wh;
       wh.x = el->xPos + xpos[i];            // page-relative; margin offset applied at draw time
-      wh.y = el->yPos - ascender;           // glyph top = baseline - ascender
+      // drawText() takes the em-box TOP as its y (its baseline is y + ascender),
+      // so the glyph top is el->yPos in page space; the oriented margin is added
+      // in the caller before the box is drawn.
+      wh.y = el->yPos;
       wh.w = renderer.getTextWidth(fontId, w.c_str());
       wh.h = emHeight;
       wh.text = w;
