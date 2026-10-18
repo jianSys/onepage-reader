@@ -289,24 +289,44 @@ void DictionaryActivity::render(RenderLock&&) {
   const int labelFont = UI_12_FONT_ID;
   const int lineH = renderer.getLineHeight(labelFont);
   const int maxW = cardW - pad * 2;
+  const int maxBottom = defTop + defH - 2;
   int y = defTop + pad + lineH + 8;
   std::string lineStr;
-  int w = 0;
-  for (size_t i = 0; i < defText.size(); i++) {
-    const char ch = defText[i];
-    if (ch == '\n' || w + renderer.getTextWidth(labelFont, std::string(1, ch).c_str()) > maxW) {
+  int lineW = 0;
+  // Walk the definition by Unicode codepoint (not byte) so CJK glyph widths are
+  // measured correctly and wrapping fits inside the card; stop at the card
+  // bottom so long entries don't overflow the page.
+  const unsigned char* p = reinterpret_cast<const unsigned char*>(defText.c_str());
+  while (*p && y <= maxBottom) {
+    const unsigned char* cur = p;
+    const uint32_t cp = utf8NextCodepoint(&p);
+    if (cp == 0) break;
+    std::string ch(reinterpret_cast<const char*>(cur), static_cast<size_t>(p - cur));
+
+    if (cp == '\n') {
       if (!lineStr.empty()) {
         renderer.drawText(labelFont, cardX + pad, y, lineStr.c_str(), true);
         y += lineH + 2;
         lineStr.clear();
-        w = 0;
+        lineW = 0;
       }
-      if (ch == '\n' || ch == ' ' || ch == '　') continue;
+      y += lineH + 2;  // paragraph gap
+      continue;
+    }
+    const int charWidth = renderer.getTextWidth(labelFont, ch.c_str());
+    if (!lineStr.empty() && (lineW + charWidth > maxW)) {
+      renderer.drawText(labelFont, cardX + pad, y, lineStr.c_str(), true);
+      y += lineH + 2;
+      lineStr.clear();
+      lineW = 0;
+      if (y > maxBottom) break;
     }
     lineStr += ch;
-    w += renderer.getTextWidth(labelFont, std::string(1, ch).c_str());
+    lineW += charWidth;
   }
-  if (!lineStr.empty()) renderer.drawText(labelFont, cardX + pad, y, lineStr.c_str(), true);
+  if (!lineStr.empty() && y <= maxBottom) {
+    renderer.drawText(labelFont, cardX + pad, y, lineStr.c_str(), true);
+  }
 
   const auto labels = mappedInput.mapLabels(tr(STR_HOME), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

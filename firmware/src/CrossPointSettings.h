@@ -165,6 +165,7 @@ class CrossPointSettings {
     LP_MENU_KOSYNC = 0,
     LP_MENU_DISABLED = 1,
     LP_MENU_BOOKMARK = 2,
+    LP_MENU_DICTIONARY = 3,
     LONG_PRESS_MENU_FUNCTION_COUNT
   };
 
@@ -331,6 +332,18 @@ class CrossPointSettings {
   uint8_t bleDeviceAddrType = 0;
   uint8_t bleDeviceValid = 0;
   char bleDeviceName[24] = "";
+
+  // --- Phone notifications (iOS ANCS) ---
+  // On/off switch (default off). At boot the ANCS client starts only when this is
+  // on AND the BLE page-turner is off — the two BLE modes are mutually exclusive
+  // because NimBLE runs a single host. Turning on stores the bonded iPhone for
+  // auto-reconnect (same shape as the page-turner peer below).
+  uint8_t notificationsEnabled = 0;
+  // Bonded iPhone for auto-reconnect at boot.
+  uint8_t notifPeerAddr[6] = {0};
+  uint8_t notifPeerAddrType = 0;
+  uint8_t notifPeerValid = 0;
+  char notifPeerName[24] = "";
 #endif
 
   ~CrossPointSettings() = default;

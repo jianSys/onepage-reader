@@ -269,7 +269,7 @@ void EpubReaderActivity::enterWordSelect() {
       if (w.empty() || w == " " || w == "\n" || w == "\t") continue;
       WordHit wh;
       wh.x = el->xPos + xpos[i];            // page-relative; margin offset applied at draw time
-      wh.y = el->yPos - emHeight;           // top of the em box (baseline - full em)
+      wh.y = el->yPos - ascender;           // glyph top = baseline - ascender
       wh.w = renderer.getTextWidth(fontId, w.c_str());
       wh.h = emHeight;
       wh.text = w;
@@ -975,6 +975,12 @@ void EpubReaderActivity::render(RenderLock&& lock) {
                  static_cast<uint8_t>(statusBarHeight + UITheme::getInstance().getMetrics().statusBarVerticalMargin));
   } else {
     orientedMarginBottom += std::max(SETTINGS.screenMargin, statusBarHeight);
+  }
+
+  // Reserve room at the bottom for the word-lookup hint bar so it never covers
+  // the last line of text while a word is selected.
+  if (wordSelectMode_) {
+    orientedMarginBottom += 18;
   }
 
   const uint16_t viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;

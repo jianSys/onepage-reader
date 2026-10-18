@@ -51,6 +51,19 @@ class EpubReaderActivity final : public Activity {
   // Consumed in onExit() to relocate the finished book into /Read/.
   bool pendingReadFolderMove = false;
 
+  // --- In-reader word selection (long-press "Dictionary" -> pick a word -> look it up) ---
+  struct WordHit {
+    int x = 0;  // page-relative top-left (before margin offset)
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    std::string text;
+  };
+  bool wordSelectMode_ = false;
+  std::vector<std::vector<WordHit>> selectLines_;  // [line][word], page-relative coords
+  int selLine_ = 0;
+  int selWord_ = 0;
+
   // Footnote support
   std::vector<FootnoteEntry> currentPageFootnotes;
   struct SavedPosition {
@@ -62,7 +75,7 @@ class EpubReaderActivity final : public Activity {
   int footnoteDepth = 0;
 
   void renderContents(std::unique_ptr<Page> page, int orientedMarginTop, int orientedMarginRight,
-                      int orientedMarginBottom, int orientedMarginLeft);
+                      int orientedMarginBottom, int orientedMarginLeft, const WordHit* highlight = nullptr);
   void drawRuledLines(const Page& page, int fontId, int orientedMarginTop, int orientedMarginLeft,
                       int orientedMarginRight) const;
   void renderStatusBar() const;
@@ -80,6 +93,13 @@ class EpubReaderActivity final : public Activity {
   void loadCachedBookmarks();
   void addBookmark();
   void updateBookmarkFlag();
+
+  // Word-selection mode (long-press "Dictionary"): let the user move a cursor over
+  // the current page's laid-out words and send the chosen word to the Dictionary.
+  void enterWordSelect();
+  void exitWordSelect();
+  void moveWordSelection(int dLine, int dWord);
+  void launchDictionaryWithWord(const std::string& word);
 
   // Footnote navigation
   void navigateToHref(const std::string& href, bool savePosition = false);
