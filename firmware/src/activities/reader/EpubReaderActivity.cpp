@@ -251,11 +251,6 @@ void EpubReaderActivity::enterWordSelect() {
 
   const int fontId = SETTINGS.getReaderFontId();
   const int ascender = renderer.getFontAscenderSize(fontId);
-  const int descender = renderer.getFontDescenderSize(fontId);
-  // Full em box (ascender + descender) reliably encloses CJK glyphs, which span
-  // the entire em height — a plain `ascender`-based box is too short and clips
-  // the top of the character.
-  const int emHeight = ascender + descender;
 
   selectLines_.clear();
   for (const auto& el : p->elements) {
@@ -269,12 +264,17 @@ void EpubReaderActivity::enterWordSelect() {
       if (w.empty() || w == " " || w == "\n" || w == "\t") continue;
       WordHit wh;
       wh.x = el->xPos + xpos[i];            // page-relative; margin offset applied at draw time
-      // drawText() takes the em-box TOP as its y (its baseline is y + ascender),
-      // so the glyph top is el->yPos in page space; the oriented margin is added
-      // in the caller before the box is drawn.
-      wh.y = el->yPos;
+      // drawText() draws a glyph with its baseline at (y + ascender); the glyph's
+      // actual pixels span [baseline - glyph.top, baseline + (glyph.height - glyph.top)].
+      // Measure the real glyph extents (not font metrics, which can clip descenders
+      // or overshoot) and derive the box from those so CJK/Latin glyphs are fully
+      // enclosed. orientedMarginTop is added by the caller before the box is drawn.
+      int above = 0, below = 0;
+      renderer.measureGlyphExtents(fontId, w.c_str(), EpdFontFamily::REGULAR, above, below);
+      const int baselinePageY = el->yPos + ascender;  // page space
+      wh.y = baselinePageY - above;                   // glyph top in page space
       wh.w = renderer.getTextWidth(fontId, w.c_str());
-      wh.h = emHeight;
+      wh.h = above + below;
       wh.text = w;
       lineWords.push_back(std::move(wh));
     }

@@ -10,6 +10,8 @@
 #include <freertos/FreeRTOS.h>
 
 #include "HalPowerManager.h"
+#include "BleHidHost.h"  // BLE_HID_HOST: mutually exclusive BLE role (C++ header)
+#include "BleHost.h"     // shared single NimBLE host (C++ header)
 
 extern "C" {
 #include <host/ble_hs.h>
@@ -18,7 +20,6 @@ extern "C" {
 #include <host/ble_uuid.h>
 #include <host/util/util.h>
 #include <nimble/nimble_port.h>
-#include <nimble/nimble_port_freertos.h>
 #include <os/os_mbuf.h>
 }
 
@@ -49,10 +50,6 @@ void initUuids() {
 
 void startScan();
 
-void bleHostTask(void* param) {
-  nimble_port_run();
-  nimble_port_freertos_deinit();
-}
 }  // namespace
 
 // --- GAP / GATT callbacks (static members) --------------------------------
@@ -227,6 +224,11 @@ BleAncsClient& BleAncsClient::getInstance() {
 BleAncsClient& BLE_ANCS = BleAncsClient::getInstance();
 
 bool BleAncsClient::start() {
+  // The ANCS client and the HID page-turner share one NimBLE host and cannot run
+  // at the same time. Stop the other role (if active) before (re)starting ours to
+  // avoid a double nimble_port_init(), which panics the device.
+  if (BLE_HID_HOST.isStarted()) BLE_HID_HOST.stop();
+
   if (started_) return true;
 
   const size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
@@ -244,8 +246,8 @@ bool BleAncsClient::start() {
   }
 
   initUuids();
-  if (nimble_port_init() != ESP_OK) {
-    LOG_ERR("BLEANCS", "nimble_port_init failed");
+  if (BleHost::ensureStarted() != ESP_OK) {
+    LOG_ERR("BLEANCS", "BleHost::ensureStarted failed");
     return false;
   }
   ble_hs_cfg.sync_cb = &BleAncsClient::onSync;
@@ -256,7 +258,6 @@ bool BleAncsClient::start() {
   ble_hs_cfg.sm_our_key_dist = 3;
   ble_hs_cfg.sm_their_key_dist = 3;
 
-  nimble_port_freertos_init(bleHostTask);
   started_ = true;
   state_ = peerValid_ ? State::Scanning : State::Stopped;
   // Hold full CPU speed: low-power mode breaks controller radio timing.
@@ -269,8 +270,7 @@ bool BleAncsClient::stop() {
   if (!started_) return true;
   if (connHandle_ != 0xFFFF) ble_gap_terminate(connHandle_, BLE_ERR_REM_USER_CONN_TERM);
   ble_gap_disc_cancel();
-  int rc = nimble_port_stop();
-  if (rc == 0) nimble_port_deinit();
+  BleHost::stop();
   started_ = false;
   state_ = State::Stopped;
   connHandle_ = 0xFFFF;

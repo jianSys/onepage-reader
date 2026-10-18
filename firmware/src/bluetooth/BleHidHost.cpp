@@ -9,6 +9,8 @@
 #include <cstring>
 
 #include "HalPowerManager.h"
+#include "BleAncsClient.h"  // BLE_ANCS: mutually exclusive BLE role (C++ header)
+#include "BleHost.h"        // shared single NimBLE host (C++ header)
 
 namespace {
 constexpr int64_t RECONNECT_BACKOFF_US = 3000000;  // 3s cooldown after a failed connect
@@ -33,7 +35,6 @@ extern "C" {
 #include <host/ble_uuid.h>
 #include <host/util/util.h>
 #include <nimble/nimble_port.h>
-#include <nimble/nimble_port_freertos.h>
 #include <os/os_mbuf.h>
 }
 
@@ -194,11 +195,6 @@ void startScan() {
   }
 }
 
-void bleHostTask(void* param) {
-  nimble_port_run();
-  nimble_port_freertos_deinit();
-}
-
 }  // namespace
 
 // C-callable GAP event handler that forwards to the singleton.
@@ -357,6 +353,11 @@ BleHidHost& BleHidHost::getInstance() {
 }
 
 bool BleHidHost::start() {
+  // The HID host and the ANCS client share one NimBLE host and cannot run at the
+  // same time. Stop the other role (if active) before (re)starting ours to avoid
+  // a double nimble_port_init(), which panics the device.
+  if (BLE_ANCS.isStarted()) BLE_ANCS.stop();
+
   if (started_) return true;
 
   const size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
@@ -373,8 +374,8 @@ bool BleHidHost::start() {
     }
   }
 
-  if (nimble_port_init() != ESP_OK) {
-    LOG_ERR("BLEHID", "nimble_port_init failed");
+  if (BleHost::ensureStarted() != ESP_OK) {
+    LOG_ERR("BLEHID", "BleHost::ensureStarted failed");
     return false;
   }
   ble_hs_cfg.sync_cb = onSync;
@@ -385,7 +386,6 @@ bool BleHidHost::start() {
   ble_hs_cfg.sm_our_key_dist = 3;
   ble_hs_cfg.sm_their_key_dist = 3;
 
-  nimble_port_freertos_init(bleHostTask);
   started_ = true;
   // onSync decides whether to auto-scan (only when a device is bound).
   state_ = hasBoundDevice() ? BleHidState::Scanning : BleHidState::Stopped;
@@ -401,10 +401,7 @@ bool BleHidHost::stop() {
     ble_gap_terminate(g_connHandle, BLE_ERR_REM_USER_CONN_TERM);
   }
   ble_gap_disc_cancel();
-  int rc = nimble_port_stop();
-  if (rc == 0) {
-    nimble_port_deinit();
-  }
+  BleHost::stop();
   started_ = false;
   state_ = BleHidState::Stopped;
   g_connHandle = BLE_HS_CONN_HANDLE_NONE;

@@ -1722,6 +1722,50 @@ int GfxRenderer::getLineHeight(const int fontId) const {
   return fontIt->second.getData(EpdFontFamily::REGULAR)->advanceY;
 }
 
+bool GfxRenderer::measureGlyphExtents(int fontId, const char* text, EpdFontFamily::Style style,
+                                      int& aboveBaseline, int& belowBaseline) const {
+  aboveBaseline = 0;
+  belowBaseline = 0;
+  if (text == nullptr || *text == '\0') return false;
+
+  std::string visual;
+  const char* renderedText = resolveVisualText(text, visual, BidiUtils::BidiBaseDir::AUTO);
+
+  const auto fontIt = fontMap.find(fontId);
+  if (fontIt == fontMap.end()) {
+    LOG_ERR("GFX", "Font %d not found", fontId);
+    return false;
+  }
+  const auto& font = fontIt->second;
+
+  const char* textCursor = renderedText;
+  uint32_t cp;
+  while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&textCursor)))) {
+    // Hebrew Niqqud (vowel marks) are skipped at render time too — they are not
+    // present in built-in fonts, so they carry no glyph extent.
+    if (cp >= 0x0591 && cp <= 0x05C7) continue;
+
+    if (utf8IsCombiningMark(cp)) {
+      const EpdGlyph* g = font.getGlyph(cp, style);
+      if (!g) continue;
+      // Combining marks are drawn above the base glyph; treating them at the base
+      // baseline only over-encloses the box slightly, which is safe for a frame.
+      if (static_cast<int>(g->top) > aboveBaseline) aboveBaseline = static_cast<int>(g->top);
+      const int below = static_cast<int>(g->height) - static_cast<int>(g->top);
+      if (below > belowBaseline) belowBaseline = below;
+      continue;
+    }
+
+    cp = font.applyLigatures(cp, textCursor, style);
+    const EpdGlyph* g = font.getGlyph(cp, style);
+    if (!g) continue;
+    if (static_cast<int>(g->top) > aboveBaseline) aboveBaseline = static_cast<int>(g->top);
+    const int below = static_cast<int>(g->height) - static_cast<int>(g->top);
+    if (below > belowBaseline) belowBaseline = below;
+  }
+  return true;
+}
+
 int GfxRenderer::getTextHeight(const int fontId) const {
   const auto fontIt = fontMap.find(fontId);
   if (fontIt == fontMap.end()) {

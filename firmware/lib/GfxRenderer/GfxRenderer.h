@@ -209,6 +209,14 @@ class GfxRenderer {
   int getFontAscenderSize(int fontId) const;
   int getFontDescenderSize(int fontId) const;
   int getLineHeight(int fontId) const;
+  /// Measures the actual rendered glyph extents of \p text in \p fontId.
+  /// \p aboveBaseline / \p belowBaseline receive the maximum pixel distance
+  /// above / below the text baseline (drawText's baseline is y + ascender, so
+  /// the em-box top is the y passed to drawText). Returns true if the font was
+  /// found. Use this instead of ascender+descender to size highlight boxes that
+  /// must tightly enclose real glyph pixels (e.g. selection frames).
+  bool measureGlyphExtents(int fontId, const char* text, EpdFontFamily::Style style,
+                          int& aboveBaseline, int& belowBaseline) const;
   std::string truncatedText(int fontId, const char* text, int maxWidth,
                             EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   /// Word-wrap \p text into at most \p maxLines lines, each no wider than
