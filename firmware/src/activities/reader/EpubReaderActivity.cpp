@@ -28,6 +28,7 @@
 #include "KOReaderCredentialStore.h"
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
+#include "activities/tools/DictionaryActivity.h"
 #include "ProgressMapper.h"
 #include "QrDisplayActivity.h"
 #include "ReaderUtils.h"
@@ -224,6 +225,13 @@ void EpubReaderActivity::onExit() {
     saveProgress(origin.spineIndex, origin.pageNumber, 0);
   }
 
+  // Persist reading progress so the bookshelf can show how far along the book is.
+  if (epub && epub->getBookSize() > 0 && section && section->pageCount > 0) {
+    const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
+    const int pct = clampPercent(static_cast<int>(epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f + 0.5f));
+    RECENT_BOOKS.setProgress(epub->getPath(), pct);
+  }
+
   section.reset();
   if (pendingReadFolderMove && epub) {
     const std::string srcPath = epub->getPath();
@@ -236,10 +244,121 @@ void EpubReaderActivity::onExit() {
   }
 }
 
+void EpubReaderActivity::enterWordSelect() {
+  if (!section) return;
+  auto p = section->loadPageFromSectionFile();
+  if (!p) return;
+
+  const int fontId = SETTINGS.getReaderFontId();
+  const int ascender = renderer.getFontAscenderSize(fontId);
+  const int descender = renderer.getFontDescenderSize(fontId);
+  // Full em box (ascender + descender) reliably encloses CJK glyphs, which span
+  // the entire em height — a plain `ascender`-based box is too short and clips
+  // the top of the character.
+  const int emHeight = ascender + descender;
+
+  selectLines_.clear();
+  for (const auto& el : p->elements) {
+    if (el->getTag() != TAG_PageLine) continue;
+    const auto& block = static_cast<PageLine*>(el.get())->getBlock();
+    const auto& words = block->getWords();
+    const auto& xpos = block->getWordXpos();
+    std::vector<WordHit> lineWords;
+    for (size_t i = 0; i < words.size(); ++i) {
+      const std::string& w = words[i];
+      if (w.empty() || w == " " || w == "\n" || w == "\t") continue;
+      WordHit wh;
+      wh.x = el->xPos + xpos[i];            // page-relative; margin offset applied at draw time
+      wh.y = el->yPos - emHeight;           // top of the em box (baseline - full em)
+      wh.w = renderer.getTextWidth(fontId, w.c_str());
+      wh.h = emHeight;
+      wh.text = w;
+      lineWords.push_back(std::move(wh));
+    }
+    if (!lineWords.empty()) selectLines_.push_back(std::move(lineWords));
+  }
+
+  if (selectLines_.empty()) {
+    // Nothing selectable on this page (e.g. image-only spread). Bail out.
+    return;
+  }
+
+  wordSelectMode_ = true;
+  selLine_ = 0;
+  selWord_ = 0;
+  requestUpdate();
+}
+
+void EpubReaderActivity::exitWordSelect() {
+  wordSelectMode_ = false;
+  ignoreNextConfirmRelease = false;
+  requestUpdate();
+}
+
+void EpubReaderActivity::moveWordSelection(int dLine, int dWord) {
+  if (selectLines_.empty()) return;
+  int nl = selLine_ + dLine;
+  if (nl < 0) nl = 0;
+  if (nl >= static_cast<int>(selectLines_.size())) nl = static_cast<int>(selectLines_.size()) - 1;
+
+  int nw = selWord_ + dWord;
+  const int lineLen = static_cast<int>(selectLines_[nl].size());
+  if (nw < 0) {
+    if (nl > 0) {
+      nl--;
+      nw = static_cast<int>(selectLines_[nl].size()) - 1;
+    } else {
+      nw = 0;
+    }
+  } else if (nw >= lineLen) {
+    if (nl < static_cast<int>(selectLines_.size()) - 1) {
+      nl++;
+      nw = 0;
+    } else {
+      nw = lineLen - 1;
+    }
+  }
+  selLine_ = nl;
+  selWord_ = nw;
+  requestUpdate();
+}
+
+void EpubReaderActivity::launchDictionaryWithWord(const std::string& word) {
+  auto dict = std::make_unique<DictionaryActivity>(renderer, mappedInput);
+  dict->setInitialQuery(word);
+  startActivityForResult(std::move(dict), [this](const ActivityResult& result) {
+    (void)result;
+    requestUpdate();
+  });
+}
+
 void EpubReaderActivity::loop() {
   if (!epub) {
     // Should never happen
     finish();
+    return;
+  }
+
+  // --- In-reader word-selection mode (entered via long-press "Dictionary") ---
+  if (wordSelectMode_) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+      exitWordSelect();
+      return;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
+      std::string word;
+      if (selLine_ >= 0 && selLine_ < static_cast<int>(selectLines_.size()) &&
+          selWord_ < static_cast<int>(selectLines_[selLine_].size())) {
+        word = selectLines_[selLine_][selWord_].text;
+      }
+      exitWordSelect();
+      if (!word.empty()) launchDictionaryWithWord(word);
+      return;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Right)) { moveWordSelection(0, 1); return; }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Left))  { moveWordSelection(0, -1); return; }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Down))  { moveWordSelection(1, 0); return; }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Up))    { moveWordSelection(-1, 0); return; }
     return;
   }
 
@@ -344,6 +463,14 @@ void EpubReaderActivity::loop() {
           ignoreNextConfirmRelease = true;  // Prevent accidental menu open after adding bookmark
           bookmarkMessageTime = millis();
           requestUpdate();
+        }
+        break;
+      case CrossPointSettings::LP_MENU_DICTIONARY:
+        // Hold ~0.4s enters word-selection mode for the current page.
+        if (mappedInput.getHeldTime() >= ReaderUtils::BOOKMARK_HOLD_MS) {
+          enterWordSelect();
+          ignoreNextConfirmRelease = true;  // entered via long-press; don't open the menu on release
+          return;
         }
         break;
       case CrossPointSettings::LP_MENU_KOSYNC:
@@ -992,8 +1119,21 @@ void EpubReaderActivity::render(RenderLock&& lock) {
     // Collect footnotes from the loaded page
     currentPageFootnotes = std::move(p->footnotes);
 
+    // When in word-selection mode, highlight the currently selected word.
+    WordHit selHit;
+    const WordHit* highlight = nullptr;
+    if (wordSelectMode_ && !selectLines_.empty() && selLine_ >= 0 &&
+        selLine_ < static_cast<int>(selectLines_.size()) &&
+        selWord_ < static_cast<int>(selectLines_[selLine_].size())) {
+      selHit = selectLines_[selLine_][selWord_];
+      selHit.x += orientedMarginLeft;
+      selHit.y += orientedMarginTop;
+      highlight = &selHit;
+    }
+
     const auto start = millis();
-    renderContents(std::move(p), orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    renderContents(std::move(p), orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft,
+                   highlight);
     LOG_DBG("ERS", "Rendered page in %dms", millis() - start);
   }
   silentIndexNextChapterIfNeeded(viewportWidth, viewportHeight);
@@ -1119,7 +1259,7 @@ void EpubReaderActivity::drawRuledLines(const Page& page, const int fontId, cons
 
 void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int orientedMarginTop,
                                         const int orientedMarginRight, const int orientedMarginBottom,
-                                        const int orientedMarginLeft) {
+                                        const int orientedMarginLeft, const WordHit* highlight) {
   const auto t0 = millis();
   const int fontId = SETTINGS.getReaderFontId();
 
@@ -1131,7 +1271,10 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   const auto tPrewarm = millis();
 
   const bool pageHasImages = page->hasImages();
-  const bool needsTextGrayscale = SETTINGS.textAntiAliasing;
+  bool needsTextGrayscale = SETTINGS.textAntiAliasing;
+  // Word-selection mode highlights one word in pure black/white; skip AA so the
+  // (frequent) redraws stay fast.
+  if (highlight) needsTextGrayscale = false;
   const bool needsAnyGrayscale = needsTextGrayscale || pageHasImages;
   auto renderGrayscalePass = [&]() {
     if (needsTextGrayscale) {
@@ -1142,8 +1285,23 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   };
 
   page->render(renderer, fontId, orientedMarginLeft, orientedMarginTop);
+  if (highlight) {
+    // Hollow frame encircling the selected glyph. drawRoundedRect() paints its
+    // stroke *inside* the given rectangle, so we expand the em box by `pad`
+    // (>= stroke width) to keep the outline fully outside the character and let
+    // the glyph stay visible inside the ring.
+    constexpr int pad = 3;
+    constexpr int stroke = 2;
+    renderer.drawRoundedRect(highlight->x - pad, highlight->y - pad, highlight->w + 2 * pad,
+                             highlight->h + 2 * pad, stroke, 2, true);
+  }
   drawRuledLines(*page, fontId, orientedMarginTop, orientedMarginLeft, orientedMarginRight);
   renderStatusBar();
+  if (highlight) {
+    const int hy = renderer.getScreenHeight() - 16;
+    renderer.fillRect(0, hy, renderer.getScreenWidth(), 16, true);
+    renderer.drawText(UI_12_FONT_ID, 8, hy + 3, tr(STR_WORD_LOOKUP_HINT), false);
+  }
   const auto tBwRender = millis();
 
   if (pageHasImages) {
