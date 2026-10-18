@@ -5,7 +5,7 @@
   "builds": [
     {
       "chipFamily": "ESP32-C61",
-      "parts": [{ "path": "onepage-firmware-dev.bin", "offset": 0 }]
+      "parts": [{ "path": "crossmux-onepage.bin", "offset": 0 }]
     }
   ]
 }
