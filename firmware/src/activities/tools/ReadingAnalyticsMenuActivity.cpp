@@ -7,6 +7,7 @@
 #include <string>
 
 #include "MappedInputManager.h"
+#include "ReadingHeatmapActivity.h"
 #include "ReadingStatsActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -16,6 +17,10 @@ void ReadingAnalyticsMenuActivity::buildItems() {
   rows.push_back({StrId::STR_RS_OVERVIEW, StrId::STR_READING_STATS_HINT,
                   [](GfxRenderer& r, MappedInputManager& i) -> std::unique_ptr<Activity> {
                     return std::make_unique<ReadingStatsActivity>(r, i);
+                  }});
+  rows.push_back({StrId::STR_RS_HEATMAP, StrId::STR_RS_HEATMAP_HINT,
+                  [](GfxRenderer& r, MappedInputManager& i) -> std::unique_ptr<Activity> {
+                    return std::make_unique<ReadingHeatmapActivity>(r, i);
                   }});
 }
 
