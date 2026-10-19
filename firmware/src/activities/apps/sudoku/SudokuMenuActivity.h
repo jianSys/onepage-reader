@@ -1,0 +1,43 @@
+#pragma once
+
+#include <cstdint>
+#include <vector>
+
+#include "SudokuBoard.h"
+#include "SudokuStore.h"
+#include "activities/Activity.h"
+#include "util/ButtonNavigator.h"
+
+class SudokuMenuActivity final : public Activity {
+ public:
+  SudokuMenuActivity(GfxRenderer& renderer, MappedInputManager& mappedInput);
+  ~SudokuMenuActivity() override = default;
+
+  void onEnter() override;
+  void onExit() override;
+  void loop() override;
+  void render(RenderLock&&) override;
+
+ private:
+  enum class ItemKind : uint8_t { Continue, NewGame, Stats };
+
+  struct Item {
+    ItemKind kind;
+    SudokuBoard::Difficulty difficulty;  // valid for NewGame
+  };
+
+  ButtonNavigator buttonNavigator;
+  std::vector<Item> items;
+  int selected = 0;
+  bool showingStats = false;
+  SudokuStats cachedStats;
+  uint16_t resumeElapsedSec = 0;
+  SudokuBoard::Difficulty resumeDifficulty = SudokuBoard::Difficulty::Easy;
+  uint8_t resumeProgressPercent = 0;
+
+  void buildItems();
+  void onSelect();
+  void launchGame(SudokuBoard::Difficulty d, bool resume);  // push the game, refresh list on return
+  void renderList();
+  void renderStats();
+};

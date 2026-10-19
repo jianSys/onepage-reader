@@ -15,6 +15,7 @@
 #include "home/HomeActivity.h"
 #include "home/RecentBooksActivity.h"
 #include "network/CrossPointWebServerActivity.h"
+#include "apps/AppsMenuActivity.h"
 #include "reader/ReaderActivity.h"
 #include "settings/OpdsServerListActivity.h"
 #include "settings/SettingsActivity.h"
@@ -194,6 +195,10 @@ void ActivityManager::goToTools() {
   replaceActivity(std::make_unique<ToolsMenuActivity>(renderer, mappedInput));
 }
 
+void ActivityManager::goToApps() {
+  replaceActivity(std::make_unique<AppsMenuActivity>(renderer, mappedInput));
+}
+
 void ActivityManager::goToBrowser() {
   const auto& servers = OPDS_STORE.getServers();
   // Skip the server picker when there's only one server configured
@@ -241,6 +246,8 @@ void ActivityManager::goHome(HomeMenuItem initialMenuItem) {
       initialMenuItem = HomeMenuItem::WORD_BOOK;
     } else if (activityName == "ToolsMenu") {
       initialMenuItem = HomeMenuItem::TOOLS;
+    } else if (activityName == "AppsMenu") {
+      initialMenuItem = HomeMenuItem::APPS;
     }
   }
   replaceActivity(std::make_unique<HomeActivity>(renderer, mappedInput, initialMenuItem));

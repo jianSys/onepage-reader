@@ -21,7 +21,7 @@
 #include "fontIds.h"
 
 int HomeActivity::getMenuItemCount() const {
-  int count = 6;  // File Browser, Recents, File transfer, Settings, Word Book, Tools
+  int count = 7;  // File Browser, Recents, File transfer, Settings, Word Book, Tools, Apps
   if (!recentBooks.empty()) {
     count += recentBooks.size();
   }
@@ -206,6 +206,9 @@ void HomeActivity::loop() {
         case HomeMenuItem::TOOLS:
           onToolsOpen();
           break;
+        case HomeMenuItem::APPS:
+          onAppsOpen();
+          break;
         default:
           break;
       }
@@ -238,8 +241,8 @@ void HomeActivity::render(RenderLock&&) {
 
   // Build menu items dynamically
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_MENU_RECENT_BOOKS), tr(STR_FILE_TRANSFER),
-                                        tr(STR_SETTINGS_TITLE), tr(STR_WORD_BOOK), tr(STR_TOOLS)};
-  std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings, Book, Bookmark};
+                                        tr(STR_SETTINGS_TITLE), tr(STR_WORD_BOOK), tr(STR_TOOLS), tr(STR_APPS)};
+  std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings, Book, Bookmark, Apps};
 
   if (hasOpdsServers) {
     menuItems.insert(menuItems.begin() + 2, tr(STR_OPDS_BROWSER));
@@ -291,3 +294,5 @@ void HomeActivity::onOpdsBrowserOpen() { activityManager.goToBrowser(); }
 void HomeActivity::onWordBookOpen() { activityManager.goToWordBook(); }
 
 void HomeActivity::onToolsOpen() { activityManager.goToTools(); }
+
+void HomeActivity::onAppsOpen() { activityManager.goToApps(); }

@@ -46,6 +46,8 @@ class HomeActivity final : public Activity {
     if (item == HomeMenuItem::WORD_BOOK) return i;
     ++i;
     if (item == HomeMenuItem::TOOLS) return i;
+    ++i;
+    if (item == HomeMenuItem::APPS) return i;
     return 0;
   }
 
@@ -58,7 +60,8 @@ class HomeActivity final : public Activity {
     if (idx == i++) return HomeMenuItem::FILE_TRANSFER;
     if (idx == i++) return HomeMenuItem::SETTINGS_MENU;
     if (idx == i++) return HomeMenuItem::WORD_BOOK;
-    if (idx == i) return HomeMenuItem::TOOLS;
+    if (idx == i++) return HomeMenuItem::TOOLS;
+    if (idx == i) return HomeMenuItem::APPS;
     return HomeMenuItem::NONE;
   }
   void onSelectBook(const std::string& path);
@@ -69,6 +72,7 @@ class HomeActivity final : public Activity {
   void onOpdsBrowserOpen();
   void onWordBookOpen();
   void onToolsOpen();
+  void onAppsOpen();
 
   int getMenuItemCount() const;
   bool storeCoverBuffer();    // Store frame buffer for cover image

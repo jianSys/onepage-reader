@@ -25,6 +25,7 @@ enum class HomeMenuItem {
   SETTINGS_MENU,
   WORD_BOOK,
   TOOLS,
+  APPS,
 };
 
 /**
@@ -96,6 +97,8 @@ class ActivityManager {
   void goToWordBook();
   // Opens the on-device utilities hub (Pomodoro, and future tools).
   void goToTools();
+  // Opens the games hub (Sudoku, and future titles), mirroring goToTools.
+  void goToApps();
   void goToBrowser();
   void goToReader(std::string path);
   void goToSleep(bool fromTimeout = false);
