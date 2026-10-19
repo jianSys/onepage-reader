@@ -1,0 +1,42 @@
+# NOTICE — Third-Party Derivative Sources
+
+This file records third-party sources from which OnePage firmware code is derived, copied, or adapted, to satisfy
+upstream open-source license obligations. It complements the project `LICENSE` (MIT, which preserves the original
+CrossPoint Reader copyright).
+
+## Upstream project
+
+- **CrossPoint Reader** — https://github.com/crosspoint-reader/crosspoint-reader — MIT License.
+  OnePage firmware is a port of CrossPoint Reader for the OnePage ESP32-C61 board. Copyright is retained in `LICENSE`.
+
+## CrossMux (planned derivative source)
+
+- **CrossMux** — https://github.com/0x1abin/crossmux — MIT License. A community fork of CrossPoint Reader.
+  OnePage has repositioned its apps/tools platform to align with CrossMux; selected CrossMux features will be brought in
+  via **feature-by-feature vendor-and-port** (see `docs/crossmux-port-analysis.md`).
+
+### Current status
+
+- **No CrossMux source code has been merged into OnePage yet.** At this baseline the repo contains only:
+  - OnePage-authored code that was *independently written* and merely *modeled on* CrossMux's design language
+    (the `Tools`/`ToolApp`/`ToolsUi` code and comments referencing "crossmux-style"). This is original work and needs
+    no per-file upstream copyright.
+  - A compiled CrossMux firmware binary used only as a web download artifact (`web/public/firmware/crossmux-onepage.bin`),
+    not source.
+
+### Attribution policy for future ports (Phase 2+)
+
+When a file is copied or adapted from CrossMux, before it is merged:
+
+1. Keep CrossMux's original copyright notice and MIT permission text at the top of the copied/adapted file. If the file
+   has substantial OnePage modifications, add a `Ported from CrossMux (https://github.com/0x1abin/crossmux), MIT License;
+   modified by OnePage.` line under the retained notice.
+2. Append a one-line entry to the register below (component, source path, commit/date).
+3. If the port constitutes a large body of incorporated source, a corresponding
+   `Copyright (c) <year> CrossMux contributors` line may be added to `LICENSE` alongside the existing copyright holders.
+
+MIT requires the copyright notice and permission notice be included in all copies or substantial portions of the software.
+
+### Register of ported components
+
+_(empty — entries are added as Phase 2+ ports land)_

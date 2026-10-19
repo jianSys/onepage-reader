@@ -10,7 +10,7 @@
 # OnePage Reader
 
 **Open-Hardware DIY E-Reader Ecosystem**  
-*Firmware · Custom Board · Enclosure · Browser Tools*
+*Firmware (reading-first multi-function platform) · Custom Board · Enclosure · Browser Tools*
 
 <br/>
 
@@ -115,4 +115,5 @@ This is a **mixed-license** project designed to balance open hardware collaborat
 ## <img src="assets/icons/heart.svg" width="20" height="20" style="vertical-align: -4px; margin-right: 6px;" /> Acknowledgements
 
 - Built on top of the [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader) project (MIT License). *(Not affiliated with CrossPoint or Xteink)*.
+- The firmware's apps/tools platform direction is modeled on [CrossMux](https://github.com/0x1abin/crossmux) (MIT License), a community fork of CrossPoint Reader. *(Not affiliated with CrossMux)*. See [`firmware/NOTICE`](firmware/NOTICE) and [`firmware/docs/crossmux-port-analysis.md`](firmware/docs/crossmux-port-analysis.md) for derived-code attribution and the porting roadmap.
 - Powered by Espressif ESP32-C61 & Open-Source Community.

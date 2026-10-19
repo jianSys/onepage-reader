@@ -1,7 +1,8 @@
 # Project Governance & Community Principles
 
-CrossPoint Reader is a community-driven, open-source project. Our goal is to provide a high-quality, open-source
-firmware alternative for the Xteink X4 hardware. To keep this project productive and welcoming as we grow, we ask all
+OnePage is a community-driven, open-source project built on CrossPoint Reader. Our goal is to provide a high-quality,
+open-source firmware for the OnePage ESP32-C61 hardware — a reading-first **multi-function platform** that also hosts
+lightweight on-device apps and on-demand services. To keep this project productive and welcoming as we grow, we ask all
 contributors to follow these principles.
 
 ### 1. The "Human First" Rule
@@ -19,8 +20,9 @@ CrossPoint thrives because people step up to build what they want to see.
   [Idea Discussion](https://github.com/crosspoint-reader/crosspoint-reader/discussions/categories/ideas) or open a PR.
 - If you want to report a bug, check for duplicates and create an
   [Issue](https://github.com/crosspoint-reader/crosspoint-reader/issues).
-- While we encourage experimentation, the maintainers reserve the right to guide the project’s technical direction to
-  ensure stability on the ESP32-C3’s constrained hardware.
+- While we encourage experimentation, the maintainers reserve the right to guide the project's technical direction to
+  ensure stability on the ESP32-C61's constrained hardware and battery budget (see the Battery & Connectivity Policy in
+  [SCOPE.md](SCOPE.md)).
 - For more guidance on the scope of the project, see the [SCOPE.md](SCOPE.md) document.
 
 ### 3. Transparent Communication
