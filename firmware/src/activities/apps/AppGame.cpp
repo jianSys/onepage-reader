@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "2048/Game2048Activity.h"
+#include "airpage/AirPageActivity.h"
 #include "sokoban/SokobanGameActivity.h"
 #include "sudoku/SudokuMenuActivity.h"
 
@@ -25,6 +26,12 @@ std::vector<AppGame> getGameApps() {
       {StrId::STR_SOKOBAN_TITLE, StrId::STR_SOKOBAN_MENU,
        [](GfxRenderer& renderer, MappedInputManager& mappedInput) -> std::unique_ptr<Activity> {
          return std::make_unique<SokobanGameActivity>(renderer, mappedInput);
+       }},
+      // AirPage (LAN-only MVP): browse pushed cards, view / set as wallpaper, and a
+      // pairing QR for the device web server's POST /airpage endpoint.
+      {StrId::STR_AIRPAGE_TITLE, StrId::STR_AIRPAGE_SUBTITLE,
+       [](GfxRenderer& renderer, MappedInputManager& mappedInput) -> std::unique_ptr<Activity> {
+         return std::make_unique<AirPageActivity>(renderer, mappedInput);
        }},
   };
 }
