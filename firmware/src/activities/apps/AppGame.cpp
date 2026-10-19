@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 
+#include "2048/Game2048Activity.h"
 #include "sudoku/SudokuMenuActivity.h"
 
 std::vector<AppGame> getGameApps() {
@@ -12,6 +13,11 @@ std::vector<AppGame> getGameApps() {
       {StrId::STR_SUDOKU_TITLE, StrId::STR_SUDOKU_MENU,
        [](GfxRenderer& renderer, MappedInputManager& mappedInput) -> std::unique_ptr<Activity> {
          return std::make_unique<SudokuMenuActivity>(renderer, mappedInput);
+       }},
+      // 2048: single-activity game (no menu) — resumes any in-progress board.
+      {StrId::STR_2048_TITLE, StrId::STR_2048_MENU,
+       [](GfxRenderer& renderer, MappedInputManager& mappedInput) -> std::unique_ptr<Activity> {
+         return std::make_unique<Game2048Activity>(renderer, mappedInput);
        }},
   };
 }
