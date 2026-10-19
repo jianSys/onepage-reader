@@ -100,7 +100,7 @@ struct ThemeMetrics {
   int textFieldLineEndOffset;
 };
 
-enum UIIcon { None = 0, Folder, Text, Image, Book, File, Recent, Settings, Transfer, Library, Wifi, Hotspot, Bookmark };
+enum UIIcon { None = 0, Folder, Text, Image, Book, File, Recent, Settings, Transfer, Library, Wifi, Hotspot, Bookmark, Apps };
 
 enum class KeyboardKeyType { Normal, Shift, Mode, Space, Del, Ok, Disabled };
 
@@ -206,6 +206,11 @@ class BaseTheme {
   virtual void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                               const std::function<std::string(int index)>& buttonLabel,
                               const std::function<UIIcon(int index)>& rowIcon) const;
+  // Home screen menu hook. Defaults to drawButtonMenu; the carousel theme
+  // overrides it to render a dedicated bottom icon strip instead of a list.
+  virtual void drawHomeMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
+                            const std::function<std::string(int index)>& buttonLabel,
+                            const std::function<UIIcon(int index)>& rowIcon) const;
   virtual Rect drawPopup(const GfxRenderer& renderer, const char* message) const;
   virtual void fillPopupProgress(const GfxRenderer& renderer, const Rect& layout, const int progress) const;
   // Shared empty-state block: centered 32px icon (when the theme maps one for

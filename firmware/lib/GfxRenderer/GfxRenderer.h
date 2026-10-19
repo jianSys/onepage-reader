@@ -14,6 +14,7 @@ enum class BidiBaseDir : signed char { AUTO = -1, LTR = 0, RTL = 1 };
 class FontCacheManager;
 class SdCardFont;
 
+#include <array>
 #include <cstring>
 #include <map>
 #include <string>
@@ -73,6 +74,13 @@ class GfxRenderer {
   mutable int _stripY0 = 0;
   mutable int _stripRows = 0;
   mutable bool _stripActive = false;
+
+  // Logical-coordinate clip rectangle (scissor). Defaults to the full canvas so
+  // existing draw calls are unaffected until a ClipScope narrows it.
+  mutable int clipLeft_ = 0;
+  mutable int clipTop_ = 0;
+  mutable int clipRight_ = 32767;
+  mutable int clipBottom_ = 32767;
 
   void renderChar(const EpdFontFamily& fontFamily, uint32_t cp, int* x, int* y, bool pixelState,
                   EpdFontFamily::Style style) const;
@@ -166,6 +174,38 @@ class GfxRenderer {
   int getWriteOriginY() const { return _stripActive ? _stripY0 : 0; }
   int getWriteRows() const { return _stripActive ? _stripRows : panelHeight; }
 
+  // Logical-coordinate clip rectangle (scissor). While set, drawPixel() drops
+  // pixels outside [x, x+width) x [y, y+height) without logging. Coordinates are
+  // logical (pre-rotation), matching what activities pass to draw calls. Prefer
+  // ClipScope below; bare setters exist for symmetry with the strip API.
+  void clearClipRect() const { setClipRect(0, 0, 32767, 32767); }
+
+  // RAII guard for setClipRect()/clearClipRect(). Restores the clip on scope
+  // exit (including early returns), so a forgotten clear can never silently
+  // clip a later frame or activity.
+  struct ClipScope {
+    const GfxRenderer& renderer;
+    const std::array<int, 4> previous;
+    ClipScope(const GfxRenderer& r, const int x, const int y, const int width, const int height)
+        : renderer(r), previous(r.getClipRect()) {
+      renderer.setClipRect(x, y, width, height);
+    }
+    ~ClipScope() { renderer.setClipRect(previous[0], previous[1], previous[2], previous[3]); }
+    ClipScope(const ClipScope&) = delete;
+    ClipScope& operator=(const ClipScope&) = delete;
+  };
+
+  // UI drawing clip in logical coordinates; independent of panel orientation.
+  std::array<int, 4> getClipRect() const {
+    return {clipLeft_, clipTop_, clipRight_ - clipLeft_, clipBottom_ - clipTop_};
+  }
+  void setClipRect(int x, int y, int width, int height) const {
+    clipLeft_ = x;
+    clipTop_ = y;
+    clipRight_ = x + width;
+    clipBottom_ = y + height;
+  }
+
   // Drawing
   void drawPixel(int x, int y, bool state = true) const;
   void drawLine(int x1, int y1, int x2, int y2, bool state = true) const;
@@ -184,6 +224,10 @@ class GfxRenderer {
                        bool roundBottomLeft, bool roundBottomRight, Color color) const;
   void drawImage(const uint8_t bitmap[], int x, int y, int width, int height) const;
   void drawIcon(const uint8_t bitmap[], int x, int y, int width, int height) const;
+  // Pixel-precise square 1bpp icon plotting through drawPixel (honors clip and
+  // orientation); drawIconInverted clears ink pixels instead of setting them.
+  void drawIcon(const uint8_t bitmap[], int x, int y, int size) const;
+  void drawIconInverted(const uint8_t bitmap[], int x, int y, int size) const;
   void drawBitmap(const Bitmap& bitmap, int x, int y, int maxWidth, int maxHeight, float cropX = 0,
                   float cropY = 0) const;
   void drawBitmap1Bit(const Bitmap& bitmap, int x, int y, int maxWidth, int maxHeight) const;

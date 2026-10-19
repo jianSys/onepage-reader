@@ -11,6 +11,7 @@
 #include "components/themes/BaseTheme.h"
 #include "components/themes/card/CardTheme.h"
 #include "components/themes/lyra/Lyra3CoversTheme.h"
+#include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/lyra/LyraTheme.h"
 #include "components/themes/roundedraff/RoundedRaffTheme.h"
 
@@ -52,6 +53,11 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Card theme");
       currentTheme = std::make_unique<CardTheme>();
       currentMetrics = &CardMetrics::values;
+      break;
+    case CrossPointSettings::UI_THEME::LYRA_CAROUSEL:
+      LOG_DBG("UI", "Using Lyra Carousel theme");
+      currentTheme = std::make_unique<LyraCarouselTheme>();
+      currentMetrics = &LyraCarouselMetrics::values;
       break;
   }
 }

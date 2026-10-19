@@ -704,6 +704,14 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   }
 }
 
+void BaseTheme::drawHomeMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
+                             const std::function<std::string(int index)>& buttonLabel,
+                             const std::function<UIIcon(int index)>& rowIcon) const {
+  // Default home menu == the standard button menu. Only the carousel theme
+  // overrides this to draw a dedicated icon strip.
+  drawButtonMenu(renderer, rect, buttonCount, selectedIndex, buttonLabel, rowIcon);
+}
+
 void BaseTheme::drawEmptyState(const GfxRenderer& renderer, const Rect rect, const UIIcon icon, const char* title,
                               const char* hint) const {
   // 32x32 icon set from components/icons; unmapped icons fall back to text-only.

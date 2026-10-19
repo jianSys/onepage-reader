@@ -39,7 +39,10 @@ constexpr int mainMenuIconSize = 32;
 constexpr int listIconSize = 24;
 constexpr int mainMenuColumns = 2;
 int coverWidth = 0;
+}  // namespace
 
+// Icon lookup table (size 24 list icons / size 32 menu icons), shared between
+// LyraTheme and derived themes such as LyraCarouselTheme. Declared in LyraTheme.h.
 const uint8_t* iconForName(UIIcon icon, int size) {
   if (size == 24) {
     switch (icon) {
@@ -82,7 +85,6 @@ const uint8_t* iconForName(UIIcon icon, int size) {
   }
   return nullptr;
 }
-}  // namespace
 
 void LyraTheme::fillBatteryIcon(const GfxRenderer& renderer, Rect rect, uint16_t percentage) const {
   const bool charging = gpio.isUsbConnected();

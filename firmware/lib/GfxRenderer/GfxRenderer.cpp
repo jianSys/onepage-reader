@@ -339,6 +339,8 @@ static void renderCharImpl(const GfxRenderer& renderer, GfxRenderer::RenderMode 
 // IMPORTANT: This function is in critical rendering path and is called for every pixel. Please keep it as simple and
 // efficient as possible.
 void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
+  // Logical-space scissor: drop pixels outside the active clip rect.
+  if (x < clipLeft_ || y < clipTop_ || x >= clipRight_ || y >= clipBottom_) return;
   int phyX = 0;
   int phyY = 0;
 
@@ -744,10 +746,10 @@ void GfxRenderer::fillRectImpl(const int x, const int y, const int width, const 
   // Clip in logical space.
   const int screenW = getScreenWidth();
   const int screenH = getScreenHeight();
-  const int lx0 = std::max(0, x);
-  const int ly0 = std::max(0, y);
-  const int lx1 = std::min(screenW, x + width);
-  const int ly1 = std::min(screenH, y + height);
+  const int lx0 = std::max({0, x, clipLeft_});
+  const int ly0 = std::max({0, y, clipTop_});
+  const int lx1 = std::min({screenW, x + width, clipRight_});
+  const int ly1 = std::min({screenH, y + height, clipBottom_});
   if (lx0 >= lx1 || ly0 >= ly1) return;
 
   // Rotate the two opposing logical corners into physical-framebuffer space.
@@ -1077,6 +1079,39 @@ void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, co
 
 void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
   display.drawImageTransparent(bitmap, y, getScreenWidth() - width - x, height, width);
+}
+
+void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int size) const {
+  // Plot the icon pixel-by-pixel through drawPixel (which applies the orientation
+  // transform and the clip rect) instead of the byte-aligned framebuffer blit.
+  // The blit snaps the icon's position to 8px (one byte) along the rotated axis,
+  // which prevents it from aligning with adjacent text; per-pixel plotting is
+  // pixel-precise. Icons are square and 1bpp (MSB-first, bit==0 = ink). The
+  // (size-1-row, col) mapping reproduces the Portrait orientation the blit
+  // produced; drawIcon is only called by the UI themes, which render in Portrait.
+  const int rowBytes = (size + 7) / 8;
+  for (int row = 0; row < size; row++) {
+    for (int col = 0; col < size; col++) {
+      const uint8_t byte = bitmap[row * rowBytes + (col >> 3)];
+      const bool ink = ((byte >> (7 - (col & 7))) & 1) == 0;
+      if (ink) {
+        drawPixel(x + (size - 1 - row), y + col, true);
+      }
+    }
+  }
+}
+
+void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const int y, const int size) const {
+  const int rowBytes = (size + 7) / 8;
+  for (int row = 0; row < size; row++) {
+    for (int col = 0; col < size; col++) {
+      const uint8_t byte = bitmap[row * rowBytes + (col >> 3)];
+      const bool ink = ((byte >> (7 - (col & 7))) & 1) == 0;
+      if (ink) {
+        drawPixel(x + (size - 1 - row), y + col, false);
+      }
+    }
+  }
 }
 
 void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, const int maxWidth, const int maxHeight,

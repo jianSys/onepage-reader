@@ -29,6 +29,7 @@
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
 #include "activities/tools/DictionaryActivity.h"
+#include "activities/reader/DictionaryWordSelectActivity.h"
 #include "ProgressMapper.h"
 #include "QrDisplayActivity.h"
 #include "ReaderUtils.h"
@@ -327,9 +328,29 @@ void EpubReaderActivity::moveWordSelection(int dLine, int dWord) {
 }
 
 void EpubReaderActivity::launchDictionaryWithWord(const std::string& word) {
-  auto dict = std::make_unique<DictionaryActivity>(renderer, mappedInput);
-  dict->setInitialQuery(word);
-  startActivityForResult(std::move(dict), [this](const ActivityResult& result) {
+  // Ported flow (CrossMux parity): hand off to a standalone activity that
+  // renders the current page as background and drives the StarDict lookup.
+  // Falls back to the legacy flat-txt DictionaryActivity when SETTINGS.dictionaryName
+  // is empty (no StarDict folder picked) so users with only data/.dict/dictionary.txt
+  // installed still get a working lookup.
+  if (SETTINGS.dictionaryName[0] == '\0') {
+    auto dict = std::make_unique<DictionaryActivity>(renderer, mappedInput);
+    dict->setInitialQuery(word);
+    startActivityForResult(std::move(dict), [this](const ActivityResult& result) {
+      (void)result;
+      requestUpdate();
+    });
+    return;
+  }
+  std::unique_ptr<Page> page;
+  if (section) page = section->loadPageFromSectionFile();
+  int orientedMarginTop = 0, orientedMarginRight = 0, orientedMarginBottom = 0, orientedMarginLeft = 0;
+  renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom, &orientedMarginLeft);
+  orientedMarginTop += SETTINGS.screenMargin;
+  orientedMarginLeft += SETTINGS.screenMargin;
+  auto activity = std::make_unique<DictionaryWordSelectActivity>(renderer, mappedInput, std::move(page),
+                                                                 orientedMarginLeft, orientedMarginTop, word);
+  startActivityForResult(std::move(activity), [this](const ActivityResult& result) {
     (void)result;
     requestUpdate();
   });

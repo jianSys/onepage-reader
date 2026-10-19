@@ -71,6 +71,10 @@ constexpr ThemeMetrics values = {.batteryWidth = 16,
                                  .textFieldLineEndOffset = 0};
 }
 
+// Icon lookup table (size 24 list icons / size 32 menu icons), shared between
+// LyraTheme and derived themes such as LyraCarouselTheme. Defined in LyraTheme.cpp.
+const uint8_t* iconForName(UIIcon icon, int size);
+
 class LyraTheme : public BaseTheme {
  public:
   // Component drawing methods
