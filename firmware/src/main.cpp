@@ -32,6 +32,7 @@
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
+#include "ReadingStatsStore.h"
 #include "WordBookStore.h"
 #include "SdCardFontSystem.h"
 #include "activities/Activity.h"
@@ -469,6 +470,7 @@ void setup() {
   KOREADER_STORE.loadFromFile();
   OPDS_STORE.loadFromFile();
   WORDBOOK.loadFromFile();
+  READING_STATS.loadFromFile();
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   setupSdFonts();

@@ -34,6 +34,7 @@
 #include "activities/reader/DictionaryWordSelectActivity.h"
 #include "clippings/ClippingsManager.h"
 #include "ProgressMapper.h"
+#include "ReadingStatsStore.h"
 #include "QrDisplayActivity.h"
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
@@ -215,6 +216,18 @@ void EpubReaderActivity::onEnter() {
     LOG_ERR("CLIP", "Failed to load clippings for %s", epub->getPath().c_str());
   }
 
+  // Begin the analytics reading session (ReadingStatsStore). Progress and time are
+  // folded in via updateProgress()/tickActiveSession() and committed by endSession()
+  // in onExit(). Start percent reflects the resumed position (chapter fraction 0).
+  {
+    const int tocIdx = epub->getTocIndexForSpineIndex(currentSpineIndex);
+    const std::string chapterTitle = tocIdx >= 0 ? epub->getTocItem(tocIdx).title : std::string();
+    const int startPct =
+        clampPercent(static_cast<int>(epub->calculateProgress(currentSpineIndex, 0.0f) * 100.0f + 0.5f));
+    READING_STATS.beginSession(epub->getPath(), epub->getTitle(), epub->getAuthor(), epub->getCoverBmpPath(),
+                               static_cast<uint8_t>(startPct), chapterTitle, 0);
+  }
+
   // Trigger first update
   requestUpdate();
 }
@@ -242,6 +255,10 @@ void EpubReaderActivity::onExit() {
     const int pct = clampPercent(static_cast<int>(epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f + 0.5f));
     RECENT_BOOKS.setProgress(epub->getPath(), pct);
   }
+
+  // Close the analytics session after the final updateProgress() (footnote save
+  // above) so the idle-gap trimmed duration and last position are both captured.
+  READING_STATS.endSession();
 
   section.reset();
   // Persist any in-RAM clipping edits before dropping the store; a mid-session
@@ -495,6 +512,10 @@ void EpubReaderActivity::loop() {
     finish();
     return;
   }
+
+  // Accumulate active reading time for the analytics session (idle-gap aware:
+  // only counts wall time since the last noteActivity() within a bounded window).
+  READING_STATS.tickActiveSession();
 
   // --- In-reader word-selection mode (entered via long-press "Dictionary") ---
   if (wordSelectMode_) {
@@ -1069,6 +1090,9 @@ void EpubReaderActivity::toggleAutoPageTurn(const uint8_t selectedPageTurnOption
 }
 
 void EpubReaderActivity::pageTurn(bool isForwardTurn) {
+  // A page turn is a reading interaction: resets the idle-gap timer so
+  // tickActiveSession() keeps crediting time while the user advances pages.
+  READING_STATS.noteActivity();
   if (isForwardTurn) {
     if (section->currentPage < section->pageCount - 1) {
       section->currentPage++;
@@ -1368,6 +1392,17 @@ void EpubReaderActivity::silentIndexNextChapterIfNeeded(const uint16_t viewportW
 }
 
 bool EpubReaderActivity::saveProgress(int spineIndex, int currentPage, int pageCount) {
+  // Mirror the position into the analytics store: book-level percent (with the
+  // completed flag) plus the current chapter title and intra-chapter progress.
+  const float chapterFraction =
+      pageCount > 0 ? static_cast<float>(currentPage) / static_cast<float>(pageCount) : 0.0f;
+  const int bookPct =
+      clampPercent(static_cast<int>(epub->calculateProgress(spineIndex, chapterFraction) * 100.0f + 0.5f));
+  const int chapterPct = clampPercent(static_cast<int>(chapterFraction * 100.0f + 0.5f));
+  const int tocIdx = epub->getTocIndexForSpineIndex(spineIndex);
+  const std::string chapterTitle = tocIdx >= 0 ? epub->getTocItem(tocIdx).title : std::string();
+  READING_STATS.updateProgress(static_cast<uint8_t>(bookPct), bookPct >= 100, chapterTitle,
+                               static_cast<uint8_t>(chapterPct));
   return EpubReaderUtils::saveProgress(*epub, spineIndex, currentPage, pageCount);
 }
 

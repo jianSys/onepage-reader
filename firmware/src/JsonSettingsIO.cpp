@@ -81,6 +81,7 @@ bool JsonSettingsIO::saveState(const CrossPointState& s, const char* path) {
   doc["totalReadingSeconds"] = s.totalReadingSeconds;
   doc["totalPagesTurns"] = s.totalPagesTurns;
   doc["readingSessions"] = s.readingSessions;
+  doc["lastKnownValidTimestamp"] = s.lastKnownValidTimestamp;
   JsonArray dayOrdArr = doc["readingDayOrdinals"].to<JsonArray>();
   for (uint32_t v : s.readingDayOrdinals) dayOrdArr.add(v);
   JsonArray daySecArr = doc["readingDaySeconds"].to<JsonArray>();
@@ -123,6 +124,7 @@ bool JsonSettingsIO::loadState(CrossPointState& s, const char* json) {
   s.totalReadingSeconds = doc["totalReadingSeconds"] | static_cast<uint32_t>(0);
   s.totalPagesTurns = doc["totalPagesTurns"] | static_cast<uint32_t>(0);
   s.readingSessions = doc["readingSessions"] | static_cast<uint32_t>(0);
+  s.lastKnownValidTimestamp = doc["lastKnownValidTimestamp"] | static_cast<uint32_t>(0);
   s.readingDayOrdinals.clear();
   s.readingDaySeconds.clear();
   JsonArrayConst dayOrdArr = doc["readingDayOrdinals"];

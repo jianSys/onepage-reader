@@ -28,6 +28,10 @@ class CrossPointState {
   uint32_t totalReadingSeconds = 0;
   uint32_t totalPagesTurns = 0;
   uint32_t readingSessions = 0;
+  // Last wall-clock epoch (seconds) observed valid while the device was awake.
+  // ReadingStatsStore uses this as a day-bucketing fallback when the RTC has
+  // rolled back below the sanity threshold after a reboot without a fresh sync.
+  uint32_t lastKnownValidTimestamp = 0;
 
   // Per-day reading time (seconds), bucketed by UTC day ordinal (time(nullptr)/86400).
   // readingDayOrdinals[i] pairs with readingDaySeconds[i]. Empty until the first

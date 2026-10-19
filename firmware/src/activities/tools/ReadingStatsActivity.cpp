@@ -11,6 +11,7 @@
 
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
+#include "ReadingStatsStore.h"
 #include "ToolsUi.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -57,20 +58,14 @@ void ReadingStatsActivity::render(RenderLock&&) {
   const int contentBottom = pageHeight - (metrics.buttonHintsHeight + metrics.verticalSpacing);
 
   const auto& state = APP_STATE;
-  const uint32_t totalSeconds = state.totalReadingSeconds;
-  const uint32_t totalTurns = state.totalPagesTurns;
+  // Authoritative figures come from the ReadingStatsStore engine (persisted to
+  // reading_stats.json); the store buckets by local day ordinal so the recent
+  // chart and "today" highlight share one calendar with the streak counter.
+  const uint32_t totalSeconds = static_cast<uint32_t>(READING_STATS.getTotalReadingMs() / 1000ULL);
+  const uint32_t todaySeconds = static_cast<uint32_t>(READING_STATS.getTodayReadingMs() / 1000ULL);
+  const uint32_t streakDays = READING_STATS.getCurrentStreakDays();
   const uint32_t sessions = state.readingSessions;
-
-  // Live session duration, shown only when a reading session is currently active.
-  std::string currentSession;
-  if (state.sessionActive) {
-    const uint32_t elapsed = (static_cast<uint32_t>(millis()) - state.sessionStartMillis) / 1000;
-    currentSession = formatDuration(elapsed);
-  } else {
-    currentSession = "—";
-  }
-
-  const uint32_t today = CrossPointState::currentDayOrdinal();
+  const uint32_t today = READING_STATS.getTodayDayOrdinal();
   const int cardX = 14;
   const int cardW = pageWidth - cardX * 2;
   const int pad = 14;
@@ -109,9 +104,16 @@ void ReadingStatsActivity::render(RenderLock&&) {
   ToolsUi::drawTracked(renderer, eyebrowFont, tr(STR_READING_STATS_WEEK), cardX + pad, titleY, 2, true);
 
   std::vector<uint32_t> dayTotals(7, 0);
+  const auto& readingDays = READING_STATS.getReadingDays();
+  auto secondsForDay = [&readingDays](uint32_t dayOrdinal) -> uint32_t {
+    for (const auto& d : readingDays) {
+      if (d.dayOrdinal == dayOrdinal) return static_cast<uint32_t>(d.readingMs / 1000ULL);
+    }
+    return 0;
+  };
   for (int i = 0; i < 7; i++) {
     const uint32_t d = (today >= static_cast<uint32_t>(i)) ? (today - i) : 0;
-    dayTotals[6 - i] = state.readingSecondsForDay(d);  // index 6 = today (rightmost)
+    dayTotals[6 - i] = secondsForDay(d);  // index 6 = today (rightmost)
   }
   uint32_t maxSec = 0, weekTotal = 0;
   for (uint32_t v : dayTotals) {
@@ -190,9 +192,9 @@ void ReadingStatsActivity::render(RenderLock&&) {
     bool active;
   };
   Tile tiles[3] = {
-      {tr(STR_READING_STATS_TURNS), std::to_string(totalTurns), false},
+      {tr(STR_READING_STATS_TODAY), formatDuration(todaySeconds), todaySeconds > 0},
+      {tr(STR_READING_STATS_STREAK), std::to_string(streakDays), streakDays > 0},
       {tr(STR_READING_STATS_SESSIONS), std::to_string(sessions), false},
-      {tr(STR_READING_STATS_SESSION), currentSession, state.sessionActive},
   };
 
   const int labelFont2 = UI_10_FONT_ID;

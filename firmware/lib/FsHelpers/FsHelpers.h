@@ -68,6 +68,16 @@ inline bool hasCssExtension(const String& fileName) {
 std::string extractFolderPath(const std::string& filePath);
 
 /**
+ * Both arguments are normalized absolute paths. Equality counts as containment.
+ */
+bool isSameOrDescendantPath(std::string_view path, std::string_view root);
+
+/**
+ * Replace oldRoot with newRoot when path is oldRoot or one of its descendants.
+ */
+std::string rebasePath(std::string_view path, std::string_view oldRoot, std::string_view newRoot);
+
+/**
  * Sanitize a filename/path component for FAT32 in a caller-provided buffer.
  * Replaces invalid path characters, spaces, and control characters with '-'.
  */

@@ -189,6 +189,17 @@ class CrossPointSettings {
 
   enum TILT_PAGE_TURN { TILT_OFF = 0, TILT_NORMAL = 1, TILT_NVERTED = 2, TILT_PAGE_TURN_COUNT };
 
+  // Daily reading goal (CrossMux parity, reading-stats). Index into the goal
+  // picker once the stats settings UI lands; getDailyGoalMs() derives the ms
+  // budget from this. Default 30 minutes.
+  enum DAILY_GOAL_TARGET {
+    DAILY_GOAL_15_MIN = 0,
+    DAILY_GOAL_30_MIN = 1,
+    DAILY_GOAL_45_MIN = 2,
+    DAILY_GOAL_60_MIN = 3,
+    DAILY_GOAL_TARGET_COUNT
+  };
+
   enum QUICK_RESUME_SLEEP_SCREEN {
     QUICK_RESUME_NEVER = 0,
     QUICK_RESUME_AFTER_TIMEOUT = 1,
@@ -248,6 +259,8 @@ class CrossPointSettings {
   // EPUB reading orientation settings
   // 0 = portrait (default), 1 = landscape clockwise, 2 = inverted, 3 = landscape counter-clockwise
   uint8_t orientation = PORTRAIT;
+  // Daily reading goal target (DAILY_GOAL_TARGET enum index); see getDailyGoalMs().
+  uint8_t dailyGoalTarget = DAILY_GOAL_30_MIN;
   // Button layouts (front layout retained for migration only)
   uint8_t frontButtonLayout = BACK_CONFIRM_LEFT_RIGHT;
   uint8_t sideButtonLayout = PREV_NEXT;
@@ -387,6 +400,8 @@ class CrossPointSettings {
   unsigned long getSleepTimeoutMs() const;
   unsigned long getLockScreenIdleMs() const;  // 0 = never auto-sleep the lock screen
   int getRefreshFrequency() const;
+  // Daily reading goal in milliseconds, derived from dailyGoalTarget.
+  uint64_t getDailyGoalMs() const;
 };
 
 // Helper macro to access settings
