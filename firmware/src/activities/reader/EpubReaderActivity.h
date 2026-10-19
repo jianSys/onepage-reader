@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "BookmarkEntry.h"
+#include "ClipSelectionActivity.h"
 #include "EpubReaderMenuActivity.h"
 #include "ProgressMapper.h"
 #include "activities/Activity.h"
@@ -47,6 +48,11 @@ class EpubReaderActivity final : public Activity {
   // removeReadBooksFromRecents feature (set at End-of-Book, cleared if paged back in).
   bool recentsEntryRemoved = false;
   unsigned long bookmarkMessageTime = 0UL;
+  // Ephemeral toast after a clip is saved/removed or fails to persist; mirrors
+  // the bookmark message pattern from the same release-decay loop.
+  bool showClippingMessage = false;
+  StrId clippingMessage = StrId::STR_CLIPPING_SAVED;
+  unsigned long clippingMessageTime = 0UL;
   // Set when the reader is left at end-of-book and SETTINGS.moveFinishedToReadFolder is on.
   // Consumed in onExit() to relocate the finished book into /Read/.
   bool pendingReadFolderMove = false;
@@ -104,6 +110,13 @@ class EpubReaderActivity final : public Activity {
   // Footnote navigation
   void navigateToHref(const std::string& href, bool savePosition = false);
   void restoreSavedPosition();
+
+  // Clipping flow (CrossMux parity): the reader hands off to a standalone
+  // word-selection activity anchored on the current page and persists the
+  // result via ClippingStore + ClippingsManager. openClippingList launches
+  // the plain-Activity browser for the current book's saved items.
+  void startClipSelection(ClipSelectionActivity::Mode mode = ClipSelectionActivity::Mode::Clip);
+  void openClippingList();
 
  public:
   explicit EpubReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Epub> epub)

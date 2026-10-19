@@ -172,6 +172,14 @@ bool HalFile::rename(const char* newPath) {
   return ::rename(impl->path.c_str(), resolve(newPath).c_str()) == 0;
 }
 
+bool HalFile::truncate(size_t newSize) {
+  if (!impl || !impl->fp) return false;
+  std::fflush(impl->fp);
+  if (::ftruncate(::fileno(impl->fp), static_cast<long>(newSize)) != 0) return false;
+  impl->fileSize_ = newSize;
+  return true;
+}
+
 bool HalFile::isDirectory() const { return impl && impl->isDir_; }
 
 void HalFile::rewindDirectory() {

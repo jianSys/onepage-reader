@@ -59,9 +59,25 @@ struct FilePathResult {
   std::string path;
 };
 
+// Result returned from ClipSelectionActivity when the user confirms a range.
+// action selects which downstream side effect the reader should run: a plain
+// clipping, a dictionary lookup on the selected text, or a bookmark.
+struct ClippingResult {
+  enum class Action : uint8_t { Clip, Lookup, Bookmark };
+  Action action = Action::Clip;
+  std::string text;
+  uint16_t startPageOffset = 0;
+  uint16_t endPageOffset = 0;
+  uint16_t startWordIndex = 0;
+  uint16_t endWordIndex = 0;
+  uint16_t wordCount = 0;
+  uint32_t startOffset = UINT32_MAX;
+  uint32_t endOffset = UINT32_MAX;
+};
+
 using ResultVariant =
     std::variant<std::monostate, WifiResult, KeyboardResult, MenuResult, ChapterResult, PercentResult, IntervalResult,
-                 PageResult, ProgressChangeResult, NetworkModeResult, FootnoteResult, FilePathResult>;
+                 PageResult, ProgressChangeResult, NetworkModeResult, FootnoteResult, FilePathResult, ClippingResult>;
 
 struct ActivityResult {
   bool isCancelled = false;

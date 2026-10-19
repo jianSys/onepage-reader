@@ -18,10 +18,12 @@
 #include <limits>
 
 #include "BookmarkEntry.h"
+#include "ClippingStore.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "EpubReaderBookmarksActivity.h"
 #include "EpubReaderChapterSelectionActivity.h"
+#include "EpubReaderClippingListActivity.h"
 #include "EpubReaderFootnotesActivity.h"
 #include "EpubReaderPercentSelectionActivity.h"
 #include "EpubReaderUtils.h"
@@ -30,6 +32,7 @@
 #include "MappedInputManager.h"
 #include "activities/tools/DictionaryActivity.h"
 #include "activities/reader/DictionaryWordSelectActivity.h"
+#include "clippings/ClippingsManager.h"
 #include "ProgressMapper.h"
 #include "QrDisplayActivity.h"
 #include "ReaderUtils.h"
@@ -205,6 +208,13 @@ void EpubReaderActivity::onEnter() {
 
   loadCachedBookmarks();
 
+  // Load the book's saved clippings so highlights render on first paint and
+  // ClippingStore.addClipping has a populated index to append to. Failure is
+  // non-fatal (empty store); reader-side logs already flag SD issues.
+  if (!CLIPPINGS.loadForBook(epub->getPath(), epub->getTitle(), epub->getAuthor(), "epub")) {
+    LOG_ERR("CLIP", "Failed to load clippings for %s", epub->getPath().c_str());
+  }
+
   // Trigger first update
   requestUpdate();
 }
@@ -234,6 +244,14 @@ void EpubReaderActivity::onExit() {
   }
 
   section.reset();
+  // Persist any in-RAM clipping edits before dropping the store; a mid-session
+  // SD failure surfaces here (log only) since the reader has no toast slot on
+  // exit. Unload frees the block index so a subsequent different book starts
+  // from a clean state.
+  if (CLIPPINGS.hasClippings()) {
+    CLIPPINGS.saveToFile();
+  }
+  CLIPPINGS.unload();
   if (pendingReadFolderMove && epub) {
     const std::string srcPath = epub->getPath();
     const std::string oldCachePath = epub->getCachePath();
@@ -356,6 +374,121 @@ void EpubReaderActivity::launchDictionaryWithWord(const std::string& word) {
   });
 }
 
+void EpubReaderActivity::startClipSelection(const ClipSelectionActivity::Mode mode) {
+  if (!section || !epub || section->currentPage < 0 || section->currentPage >= section->pageCount) return;
+
+  const int pageNumber = section->currentPage;
+  const uint16_t pageCount = section->pageCount;
+  const uint16_t spineIndex = static_cast<uint16_t>(currentSpineIndex);
+
+  // Load a small forward window so the user can extend a selection onto the next
+  // pages without triggering a full chapter re-render. Section has no random
+  // access page loader — loadPageFromSectionFile reads whatever currentPage
+  // points at — so save/restore currentPage around the loop.
+  constexpr int kClipWindow = 3;
+  std::vector<std::unique_ptr<Page>> pages;
+  pages.reserve(kClipWindow);
+  const int savedCurrentPage = section->currentPage;
+  for (int pageOffset = 0; pageOffset < kClipWindow && pageNumber + pageOffset < static_cast<int>(pageCount);
+       ++pageOffset) {
+    section->currentPage = pageNumber + pageOffset;
+    auto page = section->loadPageFromSectionFile();
+    if (!page) break;
+    pages.push_back(std::move(page));
+  }
+  section->currentPage = savedCurrentPage;
+
+  if (pages.empty()) {
+    LOG_ERR("CLIP", "Failed to load page %d for clipping selection", pageNumber);
+    requestUpdate();
+    return;
+  }
+
+  int marginTop, marginRight, marginBottom, marginLeft;
+  renderer.getOrientedViewableTRBL(&marginTop, &marginRight, &marginBottom, &marginLeft);
+  marginTop += SETTINGS.screenMargin;
+  marginLeft += SETTINGS.screenMargin;
+
+  std::string chapterTitle;
+  const int tocIdx = epub->getTocIndexForSpineIndex(currentSpineIndex);
+  if (tocIdx >= 0) chapterTitle = epub->getTocItem(tocIdx).title;
+  std::string bookTitle = epub->getTitle();
+  std::string author = epub->getAuthor();
+
+  auto activity = makeUniqueNoThrow<ClipSelectionActivity>(renderer, mappedInput, std::move(pages), marginLeft,
+                                                            marginTop, -1, -1, mode);
+  if (!activity) {
+    LOG_ERR("CLIP", "Failed to allocate clipping selection activity");
+    requestUpdate();
+    return;
+  }
+  startActivityForResult(
+      std::move(activity),
+      [this, spineIndex, pageNumber, pageCount, bookTitle = std::move(bookTitle), author = std::move(author),
+       chapterTitle = std::move(chapterTitle)](const ActivityResult& result) {
+        if (result.isCancelled) {
+          requestUpdate();
+          return;
+        }
+        const auto& clipping = std::get<ClippingResult>(result.data);
+        const uint16_t startPage = static_cast<uint16_t>(pageNumber + clipping.startPageOffset);
+        const uint16_t endPage = static_cast<uint16_t>(pageNumber + clipping.endPageOffset);
+        if (section && currentSpineIndex == static_cast<int>(spineIndex) && endPage < section->pageCount) {
+          section->currentPage = endPage;
+        }
+        if (clipping.action == ClippingResult::Action::Bookmark) {
+          addBookmark();
+          showBookmarkMessage = true;
+          bookmarkMessageTime = millis();
+          requestUpdate();
+          return;
+        }
+        if (clipping.action == ClippingResult::Action::Lookup) {
+          launchDictionaryWithWord(clipping.text);
+          return;
+        }
+        const uint16_t paragraphIndex =
+            section ? section->getParagraphIndexForPage(startPage).value_or(UINT16_MAX) : UINT16_MAX;
+        // layoutSignature stays 0 until the Reader abstraction (#3) lands a
+        // render-spec hash; the store treats 0 as "unknown" and skips
+        // auto-relocate across font/layout changes.
+        const auto addResult = CLIPPINGS.addClipping(
+            spineIndex, startPage, endPage, pageCount, clipping.startWordIndex, clipping.endWordIndex,
+            clipping.wordCount, chapterTitle.c_str(), paragraphIndex, clipping.text, /*layoutSignature=*/0,
+            clipping.startOffset, clipping.endOffset);
+        bool exported = false;
+        if (addResult == ClippingStore::AddResult::Added) {
+          exported = ClippingsManager::saveClipping(bookTitle, author, chapterTitle, startPage + 1, clipping.text);
+        }
+        clippingMessage =
+            addResult == ClippingStore::AddResult::LimitReached
+                ? StrId::STR_CLIPPING_LIMIT_REACHED
+            : exported                                          ? StrId::STR_CLIPPING_SAVED
+            : addResult == ClippingStore::AddResult::Added        ? StrId::STR_CLIPPING_EXPORT_FAILED
+                                                                   : StrId::STR_CLIPPING_FAILED;
+        showClippingMessage = true;
+        clippingMessageTime = millis();
+        requestUpdate();
+      });
+}
+
+void EpubReaderActivity::openClippingList() {
+  if (!epub) return;
+  auto progressChangeResultHandler = [this](const ActivityResult& result) {
+    if (!result.isCancelled) {
+      const auto& sync = std::get<ProgressChangeResult>(result.data);
+      if (currentSpineIndex != sync.spineIndex || (section && section->currentPage != sync.page)) {
+        RenderLock lock(*this);
+        currentSpineIndex = sync.spineIndex;
+        nextPageNumber = sync.page;
+        section.reset();
+      }
+    }
+  };
+  startActivityForResult(std::make_unique<EpubReaderClippingListActivity>(renderer, mappedInput, epub, epub->getPath()),
+                         progressChangeResultHandler);
+}
+
 void EpubReaderActivity::loop() {
   if (!epub) {
     // Should never happen
@@ -446,6 +579,11 @@ void EpubReaderActivity::loop() {
     requestUpdate();
   }
 
+  if (showClippingMessage && (millis() - clippingMessageTime) >= ReaderUtils::BOOKMARK_MESSAGE_DURATION_MS) {
+    showClippingMessage = false;
+    requestUpdate();
+  }
+
   // Enter reader menu activity on short-press Confirm. A long-press that fired a bound
   // function (bookmark or KOReader sync) sets ignoreNextConfirmRelease so the release
   // following the hold does not also open the menu.
@@ -505,6 +643,14 @@ void EpubReaderActivity::loop() {
             ignoreNextConfirmRelease = true;  // sync launched or error shown; suppress menu open
             return;
           }
+        }
+        break;
+      case CrossPointSettings::LP_MENU_CREATE_CLIPPING:
+        // Hold ~0.4s hands off to ClipSelectionActivity for the current page.
+        if (mappedInput.getHeldTime() >= ReaderUtils::BOOKMARK_HOLD_MS) {
+          startClipSelection();
+          ignoreNextConfirmRelease = true;  // entered via long-press; skip menu open on release
+          return;
         }
         break;
       case CrossPointSettings::LP_MENU_DISABLED:
@@ -809,6 +955,10 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       startActivityForResult(
           std::make_unique<EpubReaderBookmarksActivity>(renderer, mappedInput, epub, epub->getPath()),
           progressChangeResultHandler);
+      break;
+    }
+    case EpubReaderMenuActivity::MenuAction::CLIPPING_LIST: {
+      openClippingList();
       break;
     }
     case EpubReaderMenuActivity::MenuAction::TOGGLE_BOOKMARK: {
@@ -1178,6 +1328,10 @@ void EpubReaderActivity::render(RenderLock&& lock) {
 
   if (showBookmarkMessage) {
     GUI.drawPopup(renderer, bookmarkRemoved ? tr(STR_BOOKMARK_REMOVED) : tr(STR_BOOKMARK_ADDED));
+  }
+
+  if (showClippingMessage) {
+    GUI.drawPopup(renderer, I18n::getInstance().get(clippingMessage));
   }
 }
 

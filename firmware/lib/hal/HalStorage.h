@@ -88,6 +88,10 @@ class HalFile : public Print {
   size_t write(const void* buf, size_t count);
   size_t write(uint8_t b) override;
   bool rename(const char* newPath);
+  // Trim the file to `newSize` bytes. Used by journal-style writers to roll
+  // back a partial tail after an interrupted append. Returns false if the
+  // underlying FS rejects the shrink (read-only handle, unsupported volume).
+  bool truncate(size_t newSize);
   bool isDirectory() const;
   void rewindDirectory();
   bool close();

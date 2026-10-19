@@ -330,9 +330,11 @@ void ActivityManager::requestUpdateAndWait() {
 
 // RenderLock
 
-RenderLock::RenderLock() {
-  xSemaphoreTake(activityManager.renderingMutex, portMAX_DELAY);
-  isLocked = true;
+RenderLock::RenderLock(Mode mode) {
+  const TickType_t timeout = (mode == Mode::Try) ? static_cast<TickType_t>(0) : portMAX_DELAY;
+  if (xSemaphoreTake(activityManager.renderingMutex, timeout) == pdTRUE) {
+    isLocked = true;
+  }
 }
 
 RenderLock::RenderLock([[maybe_unused]] Activity&) {
