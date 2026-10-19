@@ -7,6 +7,7 @@
 #include <string>
 
 #include "MappedInputManager.h"
+#include "AchievementsActivity.h"
 #include "ReadingHeatmapActivity.h"
 #include "ReadingProfileActivity.h"
 #include "ReadingStatsActivity.h"
@@ -26,6 +27,10 @@ void ReadingAnalyticsMenuActivity::buildItems() {
   rows.push_back({StrId::STR_RS_PROFILE, StrId::STR_RS_PROFILE_HINT,
                   [](GfxRenderer& r, MappedInputManager& i) -> std::unique_ptr<Activity> {
                     return std::make_unique<ReadingProfileActivity>(r, i);
+                  }});
+  rows.push_back({StrId::STR_RS_ACHIEVEMENTS, StrId::STR_RS_ACHIEVEMENTS_HINT,
+                  [](GfxRenderer& r, MappedInputManager& i) -> std::unique_ptr<Activity> {
+                    return std::make_unique<AchievementsActivity>(r, i);
                   }});
 }
 
