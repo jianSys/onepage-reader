@@ -8,6 +8,7 @@
 
 #include "MappedInputManager.h"
 #include "ReadingHeatmapActivity.h"
+#include "ReadingProfileActivity.h"
 #include "ReadingStatsActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -21,6 +22,10 @@ void ReadingAnalyticsMenuActivity::buildItems() {
   rows.push_back({StrId::STR_RS_HEATMAP, StrId::STR_RS_HEATMAP_HINT,
                   [](GfxRenderer& r, MappedInputManager& i) -> std::unique_ptr<Activity> {
                     return std::make_unique<ReadingHeatmapActivity>(r, i);
+                  }});
+  rows.push_back({StrId::STR_RS_PROFILE, StrId::STR_RS_PROFILE_HINT,
+                  [](GfxRenderer& r, MappedInputManager& i) -> std::unique_ptr<Activity> {
+                    return std::make_unique<ReadingProfileActivity>(r, i);
                   }});
 }
 
