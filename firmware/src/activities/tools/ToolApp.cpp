@@ -9,7 +9,7 @@
 #include "DictionaryActivity.h"
 #include "NotificationActivity.h"
 #include "PomodoroActivity.h"
-#include "ReadingStatsActivity.h"
+#include "ReadingAnalyticsMenuActivity.h"
 
 std::vector<ToolApp> getToolApps() {
   return {
@@ -18,7 +18,7 @@ std::vector<ToolApp> getToolApps() {
       {StrId::STR_CALENDAR, StrId::STR_CALENDAR_HINT,
        [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<CalendarActivity>(r, i); }},
       {StrId::STR_READING_STATS, StrId::STR_READING_STATS_HINT,
-       [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<ReadingStatsActivity>(r, i); }},
+       [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<ReadingAnalyticsMenuActivity>(r, i); }},
       {StrId::STR_CALCULATOR, StrId::STR_CALCULATOR_HINT,
        [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<CalculatorActivity>(r, i); }},
       {StrId::STR_DICTIONARY, StrId::STR_DICTIONARY_HINT,
