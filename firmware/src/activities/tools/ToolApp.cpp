@@ -10,6 +10,7 @@
 #include "NotificationActivity.h"
 #include "PomodoroActivity.h"
 #include "ReadingAnalyticsMenuActivity.h"
+#include "standby/StandbyActivity.h"
 
 std::vector<ToolApp> getToolApps() {
   return {
@@ -17,6 +18,8 @@ std::vector<ToolApp> getToolApps() {
        [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<PomodoroActivity>(r, i); }},
       {StrId::STR_CALENDAR, StrId::STR_CALENDAR_HINT,
        [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<CalendarActivity>(r, i); }},
+      {StrId::STR_STANDBY, StrId::STR_STANDBY_HINT,
+       [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<StandbyActivity>(r, i); }},
       {StrId::STR_READING_STATS, StrId::STR_READING_STATS_HINT,
        [](GfxRenderer& r, MappedInputManager& i) { return std::make_unique<ReadingAnalyticsMenuActivity>(r, i); }},
       {StrId::STR_CALCULATOR, StrId::STR_CALCULATOR_HINT,
