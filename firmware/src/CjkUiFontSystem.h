@@ -49,12 +49,18 @@ class CjkUiFontSystem {
  private:
   // Candidate SD paths, tried in order. The LXGW WenKai 12pt .cpfont already
   // present on OnePage cards serves both Simplified and Traditional; 10pt UI
-  // reuses the same file (slightly large but legible).
+  // reuses the same file (slightly large but legible). Fonts converted from a
+  // desktop's own CJK face (see simulator/README.md) are accepted as well, so a
+  // fresh card without the LXGW pack still gets readable Chinese labels.
   static constexpr const char* kCandidatePaths[] = {
       "/.fonts/LXGWWenKai-Regular/LXGWWenKai-Regular_12.cpfont",
       "/fonts/LXGWWenKai-Regular/LXGWWenKai-Regular_12.cpfont",
       "/.fonts/LXGWWenKai/LXGWWenKai_12.cpfont",
       "/fonts/LXGWWenKai/LXGWWenKai_12.cpfont",
+      "/.fonts/HiraginoSansGB/HiraginoSansGB_12.cpfont",
+      "/fonts/HiraginoSansGB/HiraginoSansGB_12.cpfont",
+      "/.fonts/SongtiSC/SongtiSC_12.cpfont",
+      "/fonts/SongtiSC/SongtiSC_12.cpfont",
   };
 
   SdCardFont font_;

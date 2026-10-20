@@ -12,31 +12,32 @@
 #include <HalTiltSensor.h>
 #include <I18n.h>
 #include <Logging.h>
-#include "SdLog.h"
 #include <SPI.h>
 #include <WiFi.h>
 #include <builtinFonts/all.h>
 
 #include <cstring>
 
+#include "CjkUiFontSystem.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
-#include "CjkUiFontSystem.h"
+#include "SdLog.h"
 #ifdef ONEPAGE_C61
-#include "bluetooth/BleHidHost.h"
-#include "bluetooth/BleAncsClient.h"
-#include "activities/tools/NotificationActivity.h"
 #include "NotificationStore.h"
+#include "activities/tools/NotificationActivity.h"
+#include "bluetooth/BleAncsClient.h"
+#include "bluetooth/BleHidHost.h"
 #endif
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
-#include "RecentBooksStore.h"
 #include "ReadingStatsStore.h"
-#include "WordBookStore.h"
+#include "RecentBooksStore.h"
 #include "SdCardFontSystem.h"
+#include "WordBookStore.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
+#include "activities/boot_sleep/BootActivity.h"
 #include "activities/boot_sleep/NoSdCardActivity.h"
 #include "activities/settings/SdFirmwareUpdateActivity.h"
 #include "components/UITheme.h"
@@ -279,10 +280,13 @@ void setupDisplayAndBuiltinFonts(bool seamless = false) {
 
 // The SD-dependent half of font bring-up: card font discovery plus the CJK UI
 // fallback. Runs while the splash is already on screen so its cost is hidden.
-void setupSdFonts() {
+// Returns true when the CJK UI font came up, in which case the splash needs one
+// repaint for its localized status line.
+bool setupSdFonts() {
   // Discover and load SD card fonts
   sdFontSystem.begin(renderer);
 
+  bool cjkUiReady = false;
 #ifdef ONEPAGE_C61
   // Load the CJK UI font from SD and wire it as a glyph-miss fallback into the
   // builtin UI fonts, so Chinese UI labels — and the "简体中文"/"繁體中文" entries
@@ -290,10 +294,12 @@ void setupSdFonts() {
   // font file degrades gracefully (CJK shows as replacement boxes).
   if (cjkUiFontSystem.loadIfAvailable()) {
     cjkUiFontSystem.attachToUiFonts(ui10RegularFont, ui10BoldFont, ui12RegularFont, ui12BoldFont, smallFont);
+    cjkUiReady = true;
   }
 #endif
 
   LOG_DBG("MAIN", "Fonts setup");
+  return cjkUiReady;
 }
 
 void setup() {
@@ -321,8 +327,9 @@ void setup() {
   gpio.begin();
   powerManager.begin();
 #ifndef ONEPAGE_C61
-  halTiltSensor.begin();  // X4 IMU (QMI8658, I2C) — absent on OnePage; I2C probe (incl. GPIO0 strap) hangs -> CPU_LOCKUP
-  halClock.begin();       // X4 RTC (DS3231, I2C) — absent on OnePage
+  halTiltSensor
+      .begin();      // X4 IMU (QMI8658, I2C) — absent on OnePage; I2C probe (incl. GPIO0 strap) hangs -> CPU_LOCKUP
+  halClock.begin();  // X4 RTC (DS3231, I2C) — absent on OnePage
 #endif
 
   LOG_INF("MAIN", "Hardware detect: %s", gpio.deviceIsX3() ? "X3" : "X4");
@@ -473,7 +480,15 @@ void setup() {
   READING_STATS.loadFromFile();
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
-  setupSdFonts();
+  const bool cjkUiReady = setupSdFonts();
+
+  // The splash was painted before the SD-resident CJK font existed, so its
+  // status line was deliberately left out; repaint now that the glyphs are in
+  // (non-CJK languages already showed it with the builtin font).
+  if (resume == BootResume::Splash && cjkUiReady) {
+    BootActivity::setUiFontsReady();
+    activityManager.requestUpdateAndWait();
+  }
 
   // Recovery firmware mode: hold left side button (BTN_UP) together with the power button at
   // boot to skip directly to the SD-card firmware update screen. Useful on devices where USB
@@ -572,8 +587,8 @@ void loop() {
   {
     const int added = BLE_ANCS.drainPending(NOTIFICATION_STORE);
     if (added > 0) {
-      LOG_INF("BLEANCS", "%d notification(s) stored (total=%d unread=%d)", added,
-              NOTIFICATION_STORE.count(), NOTIFICATION_STORE.unreadCount());
+      LOG_INF("BLEANCS", "%d notification(s) stored (total=%d unread=%d)", added, NOTIFICATION_STORE.count(),
+              NOTIFICATION_STORE.unreadCount());
       // Refresh the notification list live while it is on screen. A status-bar
       // unread badge is a future enhancement; the store already tracks unread.
       if (NotificationActivity::isForeground()) {
