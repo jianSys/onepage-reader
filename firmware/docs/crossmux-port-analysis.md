@@ -41,7 +41,7 @@ CrossMux 的应用都挂在 `src/activities/apps/`（共 **138** 文件），由
 ### 4.1 共享底座（移植任何游戏前必须先落）
 | CrossMux 路径 | 作用 | 映射到我们 | 依赖 | 风险 |
 |---|---|---|---|---|
-| `apps/AppsMenuActivity` | 应用中心 hub | 我们的 `ToolApp`/`ToolsMenuActivity` 已充当此角色 | 纯 app | 低 |
+| `apps/AppsMenuActivity` | 应用中心 hub | 我们的 `ToolApp`/`AppsMenuActivity` 已充当此角色 | 纯 app | 低 |
 | `apps/GameUi.{h,cpp}` | 游戏通用绘制 | 新增 `src/activities/apps/GameUi`（或并入 `ToolsUi`） | 纯 app | 低 |
 | `apps/GameSaveDebouncer.h` | 存档防抖落盘 | 同上，配合 SD 存储 | 纯 app + 存储 | 低 |
 

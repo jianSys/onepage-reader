@@ -19,9 +19,7 @@
 #include "reader/ReaderActivity.h"
 #include "settings/OpdsServerListActivity.h"
 #include "settings/SettingsActivity.h"
-#include "tools/ToolsMenuActivity.h"
 #include "util/FullScreenMessageActivity.h"
-#include "wordbook/WordBookActivity.h"
 
 void ActivityManager::begin() {
   xTaskCreate(&renderTaskTrampoline, "ActivityManagerRender",
@@ -187,14 +185,6 @@ void ActivityManager::goToRecentBooks() {
   replaceActivity(std::make_unique<RecentBooksActivity>(renderer, mappedInput));
 }
 
-void ActivityManager::goToWordBook() {
-  replaceActivity(std::make_unique<WordBookActivity>(renderer, mappedInput));
-}
-
-void ActivityManager::goToTools() {
-  replaceActivity(std::make_unique<ToolsMenuActivity>(renderer, mappedInput));
-}
-
 void ActivityManager::goToApps() {
   replaceActivity(std::make_unique<AppsMenuActivity>(renderer, mappedInput));
 }
@@ -242,10 +232,6 @@ void ActivityManager::goHome(HomeMenuItem initialMenuItem) {
       initialMenuItem = HomeMenuItem::FILE_TRANSFER;
     } else if (activityName == "Settings") {
       initialMenuItem = HomeMenuItem::SETTINGS_MENU;
-    } else if (activityName == "WordBook") {
-      initialMenuItem = HomeMenuItem::WORD_BOOK;
-    } else if (activityName == "ToolsMenu") {
-      initialMenuItem = HomeMenuItem::TOOLS;
     } else if (activityName == "AppsMenu") {
       initialMenuItem = HomeMenuItem::APPS;
     }

@@ -4,9 +4,11 @@
 #include "activities/Activity.h"
 #include "util/ButtonNavigator.h"
 
-// Top-level Word Book screen: a virtual list of [Review], [Add Word] followed by
-// the stored words. Adding chains two keyboard prompts (word, then meaning);
-// deleting uses a long-press + ConfirmationActivity (mirrors RecentBooksActivity).
+// Word Book screen, reached from the last row of the apps hub: a virtual list of
+// [Review], [Add Word] followed by the stored words. Adding chains two keyboard
+// prompts (word, then meaning); deleting uses a long-press + ConfirmationActivity
+// (mirrors RecentBooksActivity). Back finishes this screen, popping straight back
+// to the hub.
 class WordBookActivity final : public Activity {
   ButtonNavigator buttonNavigator;
   int selectorIndex = 0;

@@ -23,8 +23,7 @@ enum class HomeMenuItem {
   OPDS_BROWSER,
   FILE_TRANSFER,
   SETTINGS_MENU,
-  WORD_BOOK,
-  TOOLS,
+  // The single hub: tools, games and the word book all live behind this row.
   APPS,
 };
 
@@ -94,10 +93,7 @@ class ActivityManager {
   void goToSettings();
   void goToFileBrowser(std::string path = {});
   void goToRecentBooks();
-  void goToWordBook();
-  // Opens the on-device utilities hub (Pomodoro, and future tools).
-  void goToTools();
-  // Opens the games hub (Sudoku, and future titles), mirroring goToTools.
+  // Opens the hub that carries the tools, the games and the word book.
   void goToApps();
   void goToBrowser();
   void goToReader(std::string path);

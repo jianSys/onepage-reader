@@ -21,7 +21,7 @@
 #include "fontIds.h"
 
 int HomeActivity::getMenuItemCount() const {
-  int count = 7;  // File Browser, Recents, File transfer, Settings, Word Book, Tools, Apps
+  int count = 5;  // File Browser, Recents, File transfer, Settings, Apps
   if (!recentBooks.empty()) {
     count += recentBooks.size();
   }
@@ -200,12 +200,6 @@ void HomeActivity::loop() {
         case HomeMenuItem::SETTINGS_MENU:
           onSettingsOpen();
           break;
-        case HomeMenuItem::WORD_BOOK:
-          onWordBookOpen();
-          break;
-        case HomeMenuItem::TOOLS:
-          onToolsOpen();
-          break;
         case HomeMenuItem::APPS:
           onAppsOpen();
           break;
@@ -239,10 +233,11 @@ void HomeActivity::render(RenderLock&&) {
                           recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
                           std::bind(&HomeActivity::storeCoverBuffer, this));
 
-  // Build menu items dynamically
+  // Build menu items dynamically. Everything that is not reading or settings is
+  // folded into the single Apps hub, so the list stays short enough to scan.
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_MENU_RECENT_BOOKS), tr(STR_FILE_TRANSFER),
-                                        tr(STR_SETTINGS_TITLE), tr(STR_WORD_BOOK), tr(STR_TOOLS), tr(STR_APPS)};
-  std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings, Book, Bookmark, Apps};
+                                        tr(STR_SETTINGS_TITLE), tr(STR_APPS)};
+  std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings, Apps};
 
   if (hasOpdsServers) {
     menuItems.insert(menuItems.begin() + 2, tr(STR_OPDS_BROWSER));
@@ -255,18 +250,25 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.insert(menuIcons.begin(), Book);
   }
 
+  // The menu starts right under the cover tile and must stop where the button
+  // hints begin: the hints own the bottom `buttonHintsHeight` pixels, and a row
+  // drawn underneath them is painted over and unreadable. Derive the height from
+  // the menu's own top so the two can never disagree.
+  const int menuTop = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const int menuHeight = pageHeight - menuTop - metrics.buttonHintsHeight;
+
   GUI.drawHomeMenu(
-      renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset, pageWidth,
-           pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing +
-                         metrics.homeMenuTopOffset + metrics.buttonHintsHeight)},
-      static_cast<int>(menuItems.size()),
+      renderer, Rect{0, menuTop, pageWidth, menuHeight}, static_cast<int>(menuItems.size()),
       metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size(),
       [&menuItems](int index) { return std::string(menuItems[index]); },
       [&menuIcons](int index) { return menuIcons[index]; });
 
-  const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
-  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  // The carousel theme draws its menu along the bottom edge, so the hint row
+  // would land on top of it; CrossMux skips the hints on carousel Home too.
+  if (!GUI.homeHidesButtonHints()) {
+    const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  }
 
   displayUiBuffer();
 
@@ -290,9 +292,5 @@ void HomeActivity::onSettingsOpen() { activityManager.goToSettings(); }
 void HomeActivity::onFileTransferOpen() { activityManager.goToFileTransfer(); }
 
 void HomeActivity::onOpdsBrowserOpen() { activityManager.goToBrowser(); }
-
-void HomeActivity::onWordBookOpen() { activityManager.goToWordBook(); }
-
-void HomeActivity::onToolsOpen() { activityManager.goToTools(); }
 
 void HomeActivity::onAppsOpen() { activityManager.goToApps(); }

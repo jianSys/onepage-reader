@@ -73,7 +73,8 @@ void WordBookActivity::loop() {
   }
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-    onGoHome();
+    // Pop back to the apps hub, which owns this screen as a sub-activity.
+    finish();
     return;
   }
 
@@ -185,8 +186,8 @@ void WordBookActivity::render(RenderLock&&) {
   }
 
   const bool onWordRow = selectorIndex >= ACTION_ROWS;
-  const auto labels =
-      mappedInput.mapLabels(tr(STR_HOME), tr(STR_SELECT), tr(STR_DIR_UP), onWordRow ? tr(STR_DELETE) : tr(STR_DIR_DOWN));
+  const char* downLabel = onWordRow ? tr(STR_DELETE) : tr(STR_DIR_DOWN);
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), downLabel);
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   displayUiBuffer();

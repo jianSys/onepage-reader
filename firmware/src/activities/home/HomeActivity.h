@@ -43,10 +43,6 @@ class HomeActivity final : public Activity {
     ++i;
     if (item == HomeMenuItem::SETTINGS_MENU) return i;
     ++i;
-    if (item == HomeMenuItem::WORD_BOOK) return i;
-    ++i;
-    if (item == HomeMenuItem::TOOLS) return i;
-    ++i;
     if (item == HomeMenuItem::APPS) return i;
     return 0;
   }
@@ -59,8 +55,6 @@ class HomeActivity final : public Activity {
     if (hasOpdsUrl && idx == i++) return HomeMenuItem::OPDS_BROWSER;
     if (idx == i++) return HomeMenuItem::FILE_TRANSFER;
     if (idx == i++) return HomeMenuItem::SETTINGS_MENU;
-    if (idx == i++) return HomeMenuItem::WORD_BOOK;
-    if (idx == i++) return HomeMenuItem::TOOLS;
     if (idx == i) return HomeMenuItem::APPS;
     return HomeMenuItem::NONE;
   }
@@ -70,8 +64,6 @@ class HomeActivity final : public Activity {
   void onSettingsOpen();
   void onFileTransferOpen();
   void onOpdsBrowserOpen();
-  void onWordBookOpen();
-  void onToolsOpen();
   void onAppsOpen();
 
   int getMenuItemCount() const;
