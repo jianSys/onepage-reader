@@ -216,3 +216,53 @@ STUB_ACTIVITY_BASE(KOReaderSyncActivity)
 CrossPointWebServer::~CrossPointWebServer() = default;
 
 #undef STUB_ACTIVITY_BASE
+
+// =============================================================================
+// BLE host singletons (src/bluetooth/ excluded — NimBLE and esp_timer have no host
+// equivalent). Both report "not started / not connected" so the pairing screens
+// render their idle state and the main loop's drain calls stay no-ops.
+// =============================================================================
+
+#include "bluetooth/BleAncsClient.h"
+#include "bluetooth/BleHidHost.h"
+
+BleAncsClient& BLE_ANCS = BleAncsClient::getInstance();
+
+BleAncsClient& BleAncsClient::getInstance() {
+  static BleAncsClient instance;
+  return instance;
+}
+bool BleAncsClient::start() { return false; }
+bool BleAncsClient::stop() { return false; }
+void BleAncsClient::startDiscovery() {}
+bool BleAncsClient::getDiscovered(int, PeerEntry&) const { return false; }
+void BleAncsClient::connectTo(const uint8_t[6], uint8_t) {}
+void BleAncsClient::getPeer(uint8_t[6], uint8_t&) const {}
+void BleAncsClient::setPeer(const uint8_t[6], uint8_t, const char*) {}
+void BleAncsClient::clearPeer() {}
+int BleAncsClient::drainPending(NotificationStore&) { return 0; }
+
+#ifdef ONEPAGE_C61
+BleHidHost& BleHidHost::getInstance() {
+  static BleHidHost instance;
+  return instance;
+}
+bool BleHidHost::start() { return false; }
+bool BleHidHost::stop() { return false; }
+void BleHidHost::startDiscovery() {}
+bool BleHidHost::getDiscovered(uint8_t, BleScanEntry&) const { return false; }
+void BleHidHost::connectTo(const uint8_t[6], uint8_t) {}
+void BleHidHost::setBoundDevice(const uint8_t[6], uint8_t) {}
+void BleHidHost::getBoundDevice(uint8_t[6], uint8_t&) const {}
+void BleHidHost::clearBoundDevice() {}
+void BleHidHost::startLearn(BleHidAction, bool) {}
+void BleHidHost::cancelLearn() {}
+bool BleHidHost::consumeLearnComplete() { return false; }
+const BleReportPattern& BleHidHost::pattern(BleHidAction action) const {
+  return action == BleHidAction::PageForward ? fwd_ : back_;
+}
+void BleHidHost::setPattern(BleHidAction, const BleReportPattern&) {}
+void BleHidHost::clearPatterns() {}
+bool BleHidHost::hasBothPatterns() const { return false; }
+uint8_t BleHidHost::drainPendingActions() { return 0; }
+#endif

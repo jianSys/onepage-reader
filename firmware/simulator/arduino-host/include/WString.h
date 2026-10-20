@@ -6,10 +6,26 @@
 #include <cstring>
 #include <string>
 
+// Flash-string marker type. The ESP32 core tags literals as these so overloads can tell
+// "string in flash" from "string in RAM"; on host both live in the same address space
+// and the tag survives purely for overload resolution (ArduinoJson keys off it).
+class __FlashStringHelper;
+
+#ifndef PSTR
+#define PSTR(s) (s)
+#endif
+#ifndef FPSTR
+#define FPSTR(pointer) (reinterpret_cast<const __FlashStringHelper*>(pointer))
+#endif
+#ifndef F
+#define F(string_literal) (FPSTR(PSTR(string_literal)))
+#endif
+
 class String {
  public:
   String() = default;
   String(const char* s) : data_(s ? s : "") {}
+  String(const __FlashStringHelper* s) : data_(s ? reinterpret_cast<const char*>(s) : "") {}
   // std::string conversions are explicit to avoid overload ambiguity at call sites that
   // also accept std::string_view (Arduino's String never converts implicitly from std::string).
   explicit String(const std::string& s) : data_(s) {}

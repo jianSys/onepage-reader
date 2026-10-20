@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Printable.h>
 #include <WString.h>
 
 #include <cstdarg>
@@ -20,6 +21,7 @@ class Print {
   size_t print(const char* s);
   size_t print(char c);
   size_t print(const String& s);
+  size_t print(const Printable& p);
   size_t print(int v);
   size_t print(unsigned int v);
   size_t print(long v);
@@ -31,6 +33,7 @@ class Print {
   size_t println();
   size_t println(const char* s);
   size_t println(const String& s);
+  size_t println(const Printable& p);
   size_t println(int v);
   size_t println(unsigned long v);
 

@@ -83,6 +83,15 @@ bool HalGPIO::wasPressed(uint8_t buttonIndex) const {
   return g_buttons[buttonIndex].framePressed;
 }
 
+void HalGPIO::injectPress(uint8_t buttonIndex) {
+  // Synthetic edge for this frame only, mirroring InputManager::injectPressedEvents.
+  // The caller (main loop) runs this right after update(), so the flag survives until
+  // the next update() latches pending -> frame.
+  if (buttonIndex >= kButtonCount) return;
+  std::lock_guard<std::mutex> lock(state_mutex());
+  g_buttons[buttonIndex].framePressed = true;
+}
+
 bool HalGPIO::wasAnyPressed() const {
   std::lock_guard<std::mutex> lock(state_mutex());
   for (auto& b : g_buttons) {

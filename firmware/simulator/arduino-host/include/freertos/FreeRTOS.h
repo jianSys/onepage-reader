@@ -24,3 +24,10 @@ inline constexpr unsigned configTICK_RATE_HZ = 1000;
 #ifndef DRAM_ATTR
 #define DRAM_ATTR
 #endif
+
+// Queue handles are normally introduced by <freertos/queue.h>. Some firmware headers
+// reference the type while only including <freertos/FreeRTOS.h>, which the ESP-IDF
+// build tolerates through include order; declare the alias here so header-only
+// consumers are self-sufficient. queue.h re-declares the same alias.
+struct Queue_;
+using QueueHandle_t = Queue_*;

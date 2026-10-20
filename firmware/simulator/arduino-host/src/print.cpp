@@ -20,6 +20,7 @@ size_t Print::write(const char* s) {
 size_t Print::print(const char* s) { return write(s); }
 size_t Print::print(char c) { return write(static_cast<uint8_t>(c)); }
 size_t Print::print(const String& s) { return write(s.c_str()); }
+size_t Print::print(const Printable& p) { return p.printTo(*this); }
 
 size_t Print::print(int v) {
   char buf[16];
@@ -65,6 +66,11 @@ size_t Print::println(const char* s) {
 }
 size_t Print::println(const String& s) {
   size_t a = write(s.c_str());
+  size_t b = println();
+  return a + b;
+}
+size_t Print::println(const Printable& p) {
+  size_t a = print(p);
   size_t b = println();
   return a + b;
 }

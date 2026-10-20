@@ -118,6 +118,44 @@ Keyboard mapping (matches `MappedInputManager::Button::*`):
 | Esc       | BTN_POWER      | Power button (exits sim)     |
 | F1        | —              | Toggle simulator settings overlay |
 
+To capture what the window shows (useful when the host won't grant screen
+recording permission), set `CPSIM_DUMP_BMP` to a path and every presented frame
+is also written there as a BMP:
+
+```sh
+CPSIM_DUMP_BMP=/tmp/frame.bmp ./simulator/build/crosspoint_simulator
+sips -s format png /tmp/frame.bmp --out /tmp/frame.png   # macOS; any viewer works
+```
+
+`CPSIM_KEYS` replays a comma-separated button sequence so the dump can reach a
+screen deep in the UI without a hand on the keyboard. Names are `UP`, `DOWN`,
+`LEFT`, `RIGHT`, `ENTER` (or `CONFIRM`), `BACK`, `POWER`; one press is injected
+every ~0.85 s after the first paint:
+
+```sh
+# Home → Settings → 7th row → open the theme picker, capturing the last frame
+CPSIM_DUMP_BMP=/tmp/picker.bmp \
+  CPSIM_KEYS="DOWN,DOWN,DOWN,ENTER,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER" \
+  ./simulator/build/crosspoint_simulator
+```
+
+If the window comes up black, check the startup line that reports where it was
+placed:
+
+```
+[SIM] 1 SDL display(s); window 480x800 at 660,174 (display 0)
+[SIM] renderer: opengl
+```
+
+Negative coordinates mean it landed on a display that isn't part of the visible
+desktop — the simulator centers on the display under the cursor and repaints on
+window expose, so that should not happen anymore. To rule out the GPU path
+entirely, force SDL's software backend:
+
+```sh
+CPSIM_RENDERER=software ./simulator/run.sh
+```
+
 ## Host-side settings
 
 Press **F1** to summon a translucent settings panel rendered on top of the eink
@@ -168,6 +206,42 @@ To boot directly into the reader (skip the home screen, useful for testing rende
 
 Save as `simulator/sd_root/.crosspoint/state.json` before launching.
 
+## Chinese text (CJK fonts)
+
+The builtin UI fonts have no CJK glyphs, so Chinese labels and Chinese book text
+need a `.cpfont` pack on the virtual SD card — exactly like a real card, where
+the LXGW WenKai pack ships preinstalled. That pack cannot be redistributed here,
+so convert a CJK face that is already on your machine:
+
+```sh
+python3 -m pip install freetype-py fonttools    # one-time
+python3 simulator/make_cjk_fonts.py             # macOS: Hiragino Sans GB + Songti SC
+python3 simulator/make_cjk_fonts.py MyCJK.ttf   # or any other CJK face
+```
+
+This writes 12/14/16/18 pt packs to `simulator/sd_root/.fonts/<family>/`
+(git-ignored). Two consumers pick them up:
+
+- **UI labels** — `CjkUiFontSystem` wires the 12 pt pack in as a glyph-miss
+  fallback for the builtin UI fonts. `/fonts/` paths in
+  `src/CjkUiFontSystem.h` list which families are accepted; `HiraginoSansGB`
+  and `SongtiSC` are already there.
+- **Book text** — set the reader font to the family by adding
+  `"sdFontFamilyName": "SongtiSC"` to `sd_root/.crosspoint/settings.json`
+  (or pick it under Settings → Reader → Font Family in the UI).
+
+A `settings.json` with the Chinese UI + Songti reader preset:
+
+```json
+{
+  "language": "ZH_HANS",
+  "fontSize": 1,
+  "sdFontFamilyName": "SongtiSC"
+}
+```
+
+`language` is a code string (`EN` / `ZH_HANS` / `ZH_HANT`), not an index.
+
 ## What works in first version
 
 - Boot → Home → Settings / FileBrowser / RecentBooks navigation
@@ -195,6 +269,9 @@ Save as `simulator/sd_root/.crosspoint/state.json` before launching.
 ## What's out of scope (first version)
 
 - WiFi config UI / OPDS / KOReader sync / Calibre / file transfer / OTA / web server
+- BLE page-turner (HID host) and ANCS notifications: NimBLE plus `esp_timer` have no
+  host backend, so `src/bluetooth/` is excluded and the singletons stubbed. The BLE
+  settings screens render as "not paired / not connected"
 - Image rendering inside EPUBs (PNG/JPEG decoders are stubbed)
 - 4-level grayscale (grayscale buffers fall through to 1-bpp — e.g. the AirPage
   image renders in plain B&W in the sim, though the BW frame still displays)

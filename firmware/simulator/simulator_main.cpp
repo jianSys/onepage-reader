@@ -6,8 +6,10 @@
 #include <SDL.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "simulator_config.h"
 #include "simulator_firmware.h"
@@ -59,6 +61,45 @@ uint8_t map_key_to_button(SDL_Keycode key) {
   }
 }
 
+// CPSIM_KEYS playback lets a visual check walk to a given screen without a
+// human at the keyboard, so CPSIM_DUMP_BMP can capture it: "DOWN,DOWN,ENTER"
+// presses one button every kKeyStepMs after a settle delay.
+uint8_t button_for_name(const std::string& name) {
+  if (name == "UP") return HalGPIO::BTN_UP;
+  if (name == "DOWN") return HalGPIO::BTN_DOWN;
+  if (name == "LEFT") return HalGPIO::BTN_LEFT;
+  if (name == "RIGHT") return HalGPIO::BTN_RIGHT;
+  if (name == "ENTER" || name == "CONFIRM") return HalGPIO::BTN_CONFIRM;
+  if (name == "BACK") return HalGPIO::BTN_BACK;
+  if (name == "POWER") return HalGPIO::BTN_POWER;
+  return 0xFF;
+}
+
+std::vector<uint8_t> parse_key_script(const char* spec) {
+  std::vector<uint8_t> script;
+  if (spec == nullptr || *spec == '\0') return script;
+  std::string token;
+  for (const char* p = spec;; ++p) {
+    if (*p == ',' || *p == '\0') {
+      const uint8_t button = button_for_name(token);
+      if (button == 0xFF) {
+        std::fprintf(stderr, "[SIM] CPSIM_KEYS: unknown key \"%s\" ignored\n", token.c_str());
+      } else {
+        script.push_back(button);
+      }
+      token.clear();
+      if (*p == '\0') break;
+    } else {
+      token.push_back(*p);
+    }
+  }
+  return script;
+}
+
+constexpr Uint32 kKeySettleMs = 1500;  // boot + first paint
+constexpr Uint32 kKeyHoldMs = 500;     // must span a full e-ink refresh to be seen
+constexpr Uint32 kKeyGapMs = 350;      // settle time between two scripted presses
+
 }  // namespace
 
 namespace simulator {
@@ -97,6 +138,15 @@ int main(int argc, char** argv) {
   // owns the SDL window/event loop.
   simulator::startFirmwareTask();
 
+  const std::vector<uint8_t> keyScript = parse_key_script(std::getenv("CPSIM_KEYS"));
+  size_t keyIndex = 0;
+  Uint32 keyReleaseAtMs = 0;
+  uint8_t keyDown = 0xFF;
+  // Chained off the previous press rather than an absolute schedule: an e-ink
+  // refresh can block the loop for seconds, and a fixed schedule would then
+  // fire the remaining keys back-to-back and drop some.
+  Uint32 nextKeyAtMs = SDL_GetTicks() + kKeySettleMs;
+
   bool running = true;
   while (running) {
     SDL_Event ev;
@@ -131,11 +181,46 @@ int main(int argc, char** argv) {
           }
           break;
         }
+        case SDL_WINDOWEVENT:
+          // macOS drops a window's contents when it is uncovered, unminimised, or
+          // dragged between displays; the compositor then shows plain black until
+          // the app draws again. presentIfDirty() alone would not repaint (the
+          // framebuffer has not changed), leaving a black simulator until the
+          // firmware happens to refresh the e-ink. Force one repaint on those
+          // events.
+          if (ev.window.event == SDL_WINDOWEVENT_EXPOSED || ev.window.event == SDL_WINDOWEVENT_SHOWN ||
+              ev.window.event == SDL_WINDOWEVENT_RESTORED) {
+            simulator::SimulatorWindow::instance().forceRedraw();
+          }
+          break;
         default:
           break;
       }
     }
+    const Uint32 nowMs = SDL_GetTicks();
+
+    // Scripted playback: press on schedule, release a moment later. Injected
+    // before presentIfDirty() so the resulting repaint lands in the same frame.
+    if (keyDown != 0xFF && nowMs >= keyReleaseAtMs) {
+      simulator::injectButton(keyDown, false);
+      keyDown = 0xFF;
+    }
+    if (keyDown == 0xFF && keyIndex < keyScript.size() && nowMs >= nextKeyAtMs) {
+      keyDown = keyScript[keyIndex++];
+      keyReleaseAtMs = nowMs + kKeyHoldMs;
+      nextKeyAtMs = keyReleaseAtMs + kKeyGapMs;
+      simulator::injectButton(keyDown, true);
+    }
+
     simulator::SimulatorWindow::instance().presentIfDirty();
+    // Compositor insurance: repaint once a second even when the e-ink has not
+    // changed. Costs one textured quad; makes it impossible for the window to sit
+    // black after the host purges its contents (display sleep, GPU context loss).
+    static Uint32 lastFullPaint = SDL_GetTicks();
+    if (nowMs - lastFullPaint >= 1000) {
+      lastFullPaint = nowMs;
+      simulator::SimulatorWindow::instance().forceRedraw();
+    }
     SDL_Delay(16);  // ~60 fps event pump.
   }
 

@@ -1,5 +1,13 @@
 #pragma once
 
+// Firmware and ArduinoJson both branch on the `ARDUINO` core-version macro: without it
+// library code treats `String` as an opaque user type (ArduinoJson then demands a
+// read()/write() stream interface it does not have) and PROGMEM tables lose their
+// flash-string handling. Report the same core version the shipping ESP32 build uses.
+#ifndef ARDUINO
+#define ARDUINO 10819
+#endif
+
 #include <HardwareSerial.h>
 #include <Print.h>
 #include <SPI.h>
@@ -8,11 +16,13 @@
 #include <Wire.h>
 #include <esp32-hal-cpu.h>
 #include <esp32-hal-gpio.h>
+#include <esp_heap_caps.h>
 #include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include <pgmspace.h>
 
 #include <algorithm>
 #include <cassert>

@@ -12,9 +12,24 @@
 class IPAddress {
  public:
   IPAddress() = default;
-  IPAddress(uint8_t, uint8_t, uint8_t, uint8_t) {}
-  operator uint32_t() const { return 0; }
-  String toString() const { return String("127.0.0.1"); }
+  IPAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d) : octets_{a, b, c, d} {}
+  operator uint32_t() const {
+    return (static_cast<uint32_t>(octets_[0]) << 24) | (static_cast<uint32_t>(octets_[1]) << 16) |
+           (static_cast<uint32_t>(octets_[2]) << 8) | static_cast<uint32_t>(octets_[3]);
+  }
+  String toString() const {
+    String out;
+    for (int i = 0; i < 4; i++) {
+      if (i != 0) {
+        out += '.';
+      }
+      out += static_cast<int>(octets_[i]);
+    }
+    return out;
+  }
+
+ private:
+  uint8_t octets_[4] = {0, 0, 0, 0};
 };
 
 enum WiFiMode { WIFI_OFF = 0, WIFI_STA, WIFI_AP, WIFI_AP_STA };
@@ -43,6 +58,9 @@ class WiFiClass {
   void disconnect(bool, bool) {}
   void persistent(bool) {}
   IPAddress localIP() { return IPAddress(127, 0, 0, 1); }
+  // Host has no access-point radio: an AP-IP query reads 0.0.0.0 so callers fall back
+  // to their hostname/mDNS form instead of advertising an unreachable URL.
+  IPAddress softAPIP() { return IPAddress(0, 0, 0, 0); }
   String macAddress() { return String("02:00:00:00:00:01"); }
   String SSID() { return String("SimulatedWiFi"); }
   int RSSI() { return -50; }

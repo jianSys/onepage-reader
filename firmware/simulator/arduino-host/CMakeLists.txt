@@ -38,6 +38,12 @@ target_include_directories(arduino_host PUBLIC
 
 target_compile_features(arduino_host PUBLIC cxx_std_20)
 
+# The Arduino core version macro, published to every consumer (like the real core does).
+# Libraries such as ArduinoJson branch on `#ifdef ARDUINO` while parsing their own
+# configuration — before the consumer's `#include <Arduino.h>` runs — so the definition
+# has to come from the build system, not from the header.
+target_compile_definitions(arduino_host PUBLIC ARDUINO=10819)
+
 target_compile_definitions(arduino_host PRIVATE
     ARDUINO_HOST_HEAP_SIZE_BYTES=${ARDUINO_HOST_HEAP_SIZE_BYTES}
 )

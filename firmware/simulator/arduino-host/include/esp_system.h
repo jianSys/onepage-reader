@@ -11,6 +11,12 @@ class EspClass {
   uint32_t getMinFreeHeap() const;
   uint32_t getMaxAllocHeap() const;
   uint32_t getHeapSize() const;
+  // External PSRAM size. The shipping OnePage C61 board carries 2 MB and enables it
+  // (CONFIG_SPIRAM=y), so the host reports the same capacity.
+  uint32_t getPsramSize() const;
+  // 6-byte factory MAC, little-endian packed. Stable across runs — firmware uses it as a
+  // human-readable device identity, so a random value would look like a new device boot.
+  uint64_t getEfuseMac() const;
   void restart();
 };
 

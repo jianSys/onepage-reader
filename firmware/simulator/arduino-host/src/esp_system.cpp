@@ -12,12 +12,18 @@ namespace {
 
 size_t g_free_heap = ARDUINO_HOST_HEAP_SIZE_BYTES;
 arduino_host::RestartHandler g_restart = nullptr;
+
+// Base MAC 02:00:00:00:00:01 packed little-endian, matching the value the WiFi shim
+// reports so the two identity paths never disagree.
+constexpr uint64_t kEfuseMac = 0x010000000002ULL;
 }  // namespace
 
 uint32_t EspClass::getFreeHeap() const { return static_cast<uint32_t>(g_free_heap); }
 uint32_t EspClass::getMinFreeHeap() const { return static_cast<uint32_t>(g_free_heap); }
 uint32_t EspClass::getMaxAllocHeap() const { return static_cast<uint32_t>(g_free_heap); }
 uint32_t EspClass::getHeapSize() const { return static_cast<uint32_t>(ARDUINO_HOST_HEAP_SIZE_BYTES); }
+uint32_t EspClass::getPsramSize() const { return 2 * 1024 * 1024; }
+uint64_t EspClass::getEfuseMac() const { return kEfuseMac; }
 
 void EspClass::restart() {
   if (g_restart) {

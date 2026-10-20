@@ -96,6 +96,7 @@ file(GLOB_RECURSE CROSSPOINT_LIB
     "${REPO_ROOT}/lib/ZipFile/*.cpp"
     "${REPO_ROOT}/lib/AvatarGen/*.cpp"
     "${REPO_ROOT}/lib/MiniBidi/*.cpp"
+    "${REPO_ROOT}/lib/SloppyDigits/*.cpp"
 )
 
 # Real HAL .cpp is replaced by simulator/hal/.
@@ -107,6 +108,11 @@ list(FILTER CROSSPOINT_LIB EXCLUDE REGEX "lib/hal/Hal.*\\.cpp$")
 # simulator/missing_symbols.cpp so the linker still resolves vtables and constructors.
 
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "src/network/")
+# BLE host: NimBLE + esp_timer are full ESP-IDF subsystems (GAP/GATT event structs,
+# esp_timer handles) with no meaningful host equivalent. Excluded like the network
+# activities; missing_symbols.cpp stubs the singleton API so the BLE settings screen
+# still builds and reports "not connected".
+list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "src/bluetooth/")
 # ...but keep the real HttpDownloader: the libcurl-backed esp_http_client shim lets it
 # actually fetch over the network, so AirPage and WeRead can hit the real internet.
 list(APPEND CROSSPOINT_SRC ${REPO_ROOT}/src/network/HttpDownloader.cpp)
@@ -128,6 +134,7 @@ list(FILTER CROSSPOINT_LIB EXCLUDE REGEX "lib/Serialization/ObfuscationUtils")
 # KOReaderJsonIO.cpp implements the load/save backing the store and must link with it.
 list(APPEND CROSSPOINT_LIB
     ${REPO_ROOT}/lib/KOReaderSync/KOReaderCredentialStore.cpp
+    ${REPO_ROOT}/lib/KOReaderSync/KOReaderDocumentId.cpp
     ${REPO_ROOT}/lib/KOReaderSync/KOReaderJsonIO.cpp
     ${REPO_ROOT}/lib/KOReaderSync/ProgressMapper.cpp
     ${REPO_ROOT}/lib/KOReaderSync/ChapterXPathResolver.cpp
@@ -240,6 +247,7 @@ target_include_directories(crosspoint_simulator PRIVATE
     ${REPO_ROOT}/lib/expat
     ${REPO_ROOT}/lib/uzlib/src
     ${REPO_ROOT}/lib/MiniBidi
+    ${REPO_ROOT}/lib/SloppyDigits
     ${qrcode_SOURCE_DIR}/src
     ${REPO_ROOT}/lib/KOReaderSync
     ${REPO_ROOT}/lib/Epub/Epub/converters
