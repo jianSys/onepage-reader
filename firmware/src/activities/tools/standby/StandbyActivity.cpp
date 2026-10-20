@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "MappedInputManager.h"
+#include "ChineseCalendarFace.h"
 #include "SloppyClockFace.h"
 #include "components/UITheme.h"
 #include "components/themes/BaseTheme.h"
@@ -20,7 +21,6 @@ namespace {
 // corresponding header above. Each entry declares an isAvailable() predicate so
 // a face can be hidden under runtime conditions (e.g. portrait-only); when a
 // face is unavailable it is skipped during cycling and the pager dots collapse.
-// M2 installs only the Sloppy clock; the Chinese almanac is appended in M3.
 struct FaceEntry {
   std::unique_ptr<StandbyFace> (*create)();
   bool (*isAvailable)(int sw, int sh);
@@ -29,6 +29,9 @@ struct FaceEntry {
 constexpr FaceEntry kFaces[] = {
     {[]() -> std::unique_ptr<StandbyFace> { return makeUniqueNoThrow<SloppyClockFace>(); },
      [](int, int) { return true; }},
+    // Chinese almanac (老黄历): portrait-only (needs the tall layout).
+    {[]() -> std::unique_ptr<StandbyFace> { return makeUniqueNoThrow<ChineseCalendarFace>(); },
+     [](int sw, int sh) { return sh > sw; }},
 };
 
 constexpr uint8_t kFaceCount = static_cast<uint8_t>(sizeof(kFaces) / sizeof(kFaces[0]));
