@@ -160,11 +160,21 @@ class SettingsActivity final : public Activity {
   bool preserveQuickResumeTimeoutOn = false;
   bool quickResumeTimeoutAutoEnabled = false;
 
+  // Choice popup: enum settings open a list of their values instead of cycling
+  // blind, so the current choice stays visible while the next one is picked.
+  bool optionPopupOpen = false;
+  int optionPopupSetting = -1;  // index inside *currentSettings
+  int optionPopupSelected = 0;
+  std::vector<std::string> optionPopupOptions;
+
   static constexpr int categoryCount = 4;
   static const StrId categoryNames[categoryCount];
 
   void enterCategory(int categoryIndex);
   void toggleCurrentSetting();
+  bool openOptionPopupForSelection();
+  void loopOptionPopup();
+  void applyOptionPopupSelection();
   void openSleepTimeoutPicker();
   void rebuildSettingsLists();
   void syncQuickResumeTimeoutForSleepScreen(bool sleepScreenChanged, bool quickResumeTimeoutChanged);

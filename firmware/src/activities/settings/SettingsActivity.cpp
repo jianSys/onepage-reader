@@ -107,6 +107,9 @@ void SettingsActivity::onEnter() {
   preserveQuickResumeTimeoutOn =
       SETTINGS.quickResumeSleepScreen == CrossPointSettings::QUICK_RESUME_SLEEP_SCREEN::QUICK_RESUME_AFTER_TIMEOUT;
   quickResumeTimeoutAutoEnabled = false;
+  optionPopupOpen = false;
+  optionPopupSetting = -1;
+  optionPopupOptions.clear();
   syncQuickResumeTimeoutForSleepScreen(/*sleepScreenChanged=*/true, /*quickResumeTimeoutChanged=*/false);
 
   rebuildSettingsLists();
@@ -122,6 +125,12 @@ void SettingsActivity::onExit() {
 }
 
 void SettingsActivity::loop() {
+  // The popup owns every button while it is up: back cancels, confirm applies.
+  if (optionPopupOpen) {
+    loopOptionPopup();
+    return;
+  }
+
   bool hasChangedCategory = false;
 
   // Handle actions with early return
@@ -131,7 +140,9 @@ void SettingsActivity::loop() {
       hasChangedCategory = true;
       requestUpdate();
     } else {
-      toggleCurrentSetting();
+      if (!openOptionPopupForSelection()) {
+        toggleCurrentSetting();
+      }
       requestUpdate();
       return;
     }
@@ -189,6 +200,89 @@ void SettingsActivity::loop() {
     }
     settingsCount = static_cast<int>(currentSettings->size());
   }
+}
+
+bool SettingsActivity::openOptionPopupForSelection() {
+  // Themes that do not paint an option popup keep the cycle-in-place behaviour.
+  if (!GUI.usesOptionPopup()) return false;
+
+  const int index = selectedSettingIndex - 1;
+  if (index < 0 || index >= settingsCount) return false;
+
+  const auto& setting = (*currentSettings)[index];
+  // Only fixed-choice enums get the picker: toggles flip in place, values step
+  // through their range, and the font family owns a full selection screen.
+  if (setting.type != SettingType::ENUM) return false;
+  if (setting.nameId == StrId::STR_FONT_FAMILY) return false;
+
+  optionPopupOptions.clear();
+  if (!setting.enumStringValues.empty()) {
+    optionPopupOptions = setting.enumStringValues;
+  } else {
+    optionPopupOptions.reserve(setting.enumValues.size());
+    for (const StrId value : setting.enumValues) {
+      optionPopupOptions.emplace_back(I18N.get(value));
+    }
+  }
+  if (optionPopupOptions.size() < 2) return false;
+
+  int current = 0;
+  if (setting.valuePtr != nullptr) {
+    current = SETTINGS.*(setting.valuePtr);
+  } else if (setting.valueGetter) {
+    current = setting.valueGetter();
+  }
+
+  optionPopupSetting = index;
+  optionPopupSelected = std::clamp(current, 0, static_cast<int>(optionPopupOptions.size()) - 1);
+  optionPopupOpen = true;
+  return true;
+}
+
+void SettingsActivity::loopOptionPopup() {
+  if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
+    applyOptionPopupSelection();
+    optionPopupOpen = false;
+    requestUpdate();
+    return;
+  }
+
+  if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
+    optionPopupOpen = false;
+    requestUpdate();
+    return;
+  }
+
+  const int optionCount = static_cast<int>(optionPopupOptions.size());
+  buttonNavigator.onNext([this, optionCount] {
+    optionPopupSelected = ButtonNavigator::nextIndex(optionPopupSelected, optionCount);
+    requestUpdate();
+  });
+  buttonNavigator.onPrevious([this, optionCount] {
+    optionPopupSelected = ButtonNavigator::previousIndex(optionPopupSelected, optionCount);
+    requestUpdate();
+  });
+}
+
+void SettingsActivity::applyOptionPopupSelection() {
+  if (optionPopupSetting < 0 || optionPopupSetting >= settingsCount) return;
+
+  const auto& setting = (*currentSettings)[optionPopupSetting];
+  const bool sleepScreenChanged = setting.valuePtr == &CrossPointSettings::sleepScreen;
+  const bool quickResumeTimeoutChanged = setting.valuePtr == &CrossPointSettings::quickResumeSleepScreen;
+
+  if (setting.valuePtr != nullptr) {
+    SETTINGS.*(setting.valuePtr) = static_cast<uint8_t>(optionPopupSelected);
+  } else if (setting.valueSetter) {
+    setting.valueSetter(static_cast<uint8_t>(optionPopupSelected));
+  } else {
+    return;
+  }
+
+  syncQuickResumeTimeoutForSleepScreen(sleepScreenChanged, quickResumeTimeoutChanged);
+  SETTINGS.saveToFile();
+  rebuildSettingsLists();
+  selectedSettingIndex = std::min(selectedSettingIndex, settingsCount);
 }
 
 void SettingsActivity::toggleCurrentSetting() {
@@ -411,15 +505,27 @@ void SettingsActivity::render(RenderLock&&) {
       },
       true);
 
-  // Draw help text
-  const auto confirmLabel =
-      (selectedSettingIndex == 0)
-          ? I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount])
-          : (selectedSettingIndex > 0 && (*currentSettings)[selectedSettingIndex - 1].nameId == StrId::STR_TIME_TO_SLEEP
-                 ? tr(STR_SELECT)
-                 : tr(STR_TOGGLE));
+  // Draw help text. Where the theme offers the picker, enums read as "select"
+  // rather than "toggle".
+  const bool selectsFromPopup =
+      optionPopupOpen || (GUI.usesOptionPopup() && selectedSettingIndex > 0 &&
+                          (*currentSettings)[selectedSettingIndex - 1].type == SettingType::ENUM);
+  const char* confirmLabel = tr(STR_TOGGLE);
+  if (selectsFromPopup) {
+    confirmLabel = tr(STR_SELECT);
+  } else if (selectedSettingIndex == 0) {
+    confirmLabel = I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount]);
+  } else if ((*currentSettings)[selectedSettingIndex - 1].nameId == StrId::STR_TIME_TO_SLEEP) {
+    confirmLabel = tr(STR_SELECT);
+  }
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), confirmLabel, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+
+  // The popup is painted last so it sits above the list and the hint row.
+  if (optionPopupOpen && optionPopupSetting >= 0 && optionPopupSetting < settingsCount) {
+    GUI.drawOptionPopup(renderer, I18N.get((*currentSettings)[optionPopupSetting].nameId), optionPopupOptions,
+                        optionPopupSelected);
+  }
 
   // Always use standard refresh for settings screen
   displayUiBuffer();

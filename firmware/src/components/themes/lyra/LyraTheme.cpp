@@ -6,6 +6,7 @@
 #include <HalStorage.h>
 #include <I18n.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -524,10 +525,17 @@ void LyraTheme::drawEmptyRecents(const GfxRenderer& renderer, const Rect rect) c
 void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                                const std::function<std::string(int index)>& buttonLabel,
                                const std::function<UIIcon(int index)>& rowIcon) const {
-  for (int i = 0; i < buttonCount; ++i) {
+  // Home gains a row per feature, so a menu can hold more rows than the rect is
+  // tall. Drawing them all spills into the button-hint bar; draw the window of
+  // rows that fits and scroll it to keep the selection visible instead.
+  const int rowStep = LyraMetrics::values.menuRowHeight + LyraMetrics::values.menuSpacing;
+  const int visibleRows = std::max(1, rect.height / rowStep);
+  const int safeSelectedIndex = std::max(0, selectedIndex);
+  const int firstRow = std::clamp(safeSelectedIndex - visibleRows + 1, 0, std::max(0, buttonCount - visibleRows));
+
+  for (int i = firstRow; i < buttonCount && i < firstRow + visibleRows; ++i) {
     int tileWidth = rect.width - LyraMetrics::values.contentSidePadding * 2;
-    Rect tileRect = Rect{rect.x + LyraMetrics::values.contentSidePadding,
-                         rect.y + i * (LyraMetrics::values.menuRowHeight + LyraMetrics::values.menuSpacing), tileWidth,
+    Rect tileRect = Rect{rect.x + LyraMetrics::values.contentSidePadding, rect.y + (i - firstRow) * rowStep, tileWidth,
                          LyraMetrics::values.menuRowHeight};
 
     const bool selected = selectedIndex == i;

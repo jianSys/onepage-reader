@@ -211,8 +211,37 @@ class BaseTheme {
   virtual void drawHomeMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                             const std::function<std::string(int index)>& buttonLabel,
                             const std::function<UIIcon(int index)>& rowIcon) const;
+  // True when Home puts its own menu along the bottom edge, so the hint row
+  // would be painted on top of it and has to be skipped there.
+  virtual bool homeHidesButtonHints() const { return false; }
   virtual Rect drawPopup(const GfxRenderer& renderer, const char* message) const;
   virtual void fillPopupProgress(const GfxRenderer& renderer, const Rect& layout, const int progress) const;
+  // Choice popup: a titled, scrollable list of options painted over the activity
+  // that owns it. Geometry is shared so every theme lines the rows up the same
+  // way; themes only differ in the chrome they paint around them.
+  struct OptionPopupLayout {
+    Rect panel;
+    int headerHeight;
+    int rowHeight;
+    int visibleRows;
+    int firstVisible;
+
+    [[nodiscard]] Rect optionRect(const int slot) const {
+      return Rect{panel.x, panel.y + headerHeight + slot * rowHeight, panel.width, rowHeight};
+    }
+  };
+  static constexpr int optionPopupHeaderHeight = 44;
+  static constexpr int optionPopupRowHeight = 50;
+  static constexpr int optionPopupSideMargin = 24;
+  static constexpr int optionPopupBottomPadding = 6;
+  // firstVisible < 0 scrolls the window just far enough to show selectedIndex.
+  static OptionPopupLayout layoutOptionPopup(const GfxRenderer& renderer, int optionCount, int selectedIndex,
+                                             int firstVisible = -1);
+  virtual void drawOptionPopup(const GfxRenderer& renderer, const char* title, const std::vector<std::string>& options,
+                               int selectedIndex, int firstVisible = -1) const;
+  // True when the theme wants fixed-choice settings picked from drawOptionPopup
+  // instead of being cycled in place by the settings list.
+  virtual bool usesOptionPopup() const { return false; }
   // Shared empty-state block: centered 32px icon (when the theme maps one for
   // UIIcon) + bold title + optional small hint line, vertically centered in
   // rect. Replaces bare single-line "nothing here" texts on list activities.

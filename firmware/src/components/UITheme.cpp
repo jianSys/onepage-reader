@@ -10,6 +10,7 @@
 #include "RecentBooksStore.h"
 #include "components/themes/BaseTheme.h"
 #include "components/themes/card/CardTheme.h"
+#include "components/themes/inx/InxTheme.h"
 #include "components/themes/lyra/Lyra3CoversTheme.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/lyra/LyraTheme.h"
@@ -58,6 +59,11 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Lyra Carousel theme");
       currentTheme = std::make_unique<LyraCarouselTheme>();
       currentMetrics = &LyraCarouselMetrics::values;
+      break;
+    case CrossPointSettings::UI_THEME::INX:
+      LOG_DBG("UI", "Using Inx theme");
+      currentTheme = std::make_unique<InxTheme>();
+      currentMetrics = &InxMetrics::values;
       break;
   }
 }

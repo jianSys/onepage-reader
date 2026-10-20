@@ -678,9 +678,15 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                                const std::function<std::string(int index)>& buttonLabel,
                                const std::function<UIIcon(int index)>& rowIcon) const {
-  for (int i = 0; i < buttonCount; ++i) {
-    const int tileY = BaseMetrics::values.verticalSpacing + rect.y +
-                      static_cast<int>(i) * (BaseMetrics::values.menuRowHeight + BaseMetrics::values.menuSpacing);
+  // Long menus (Home gains a row per feature) must stay clear of the button-hint
+  // bar at the bottom: draw the window of rows that fits, scrolled to the selection.
+  const int rowStep = BaseMetrics::values.menuRowHeight + BaseMetrics::values.menuSpacing;
+  const int visibleRows = std::max(1, (rect.height - BaseMetrics::values.verticalSpacing) / rowStep);
+  const int safeSelectedIndex = std::max(0, selectedIndex);
+  const int firstRow = std::clamp(safeSelectedIndex - visibleRows + 1, 0, std::max(0, buttonCount - visibleRows));
+
+  for (int i = firstRow; i < buttonCount && i < firstRow + visibleRows; ++i) {
+    const int tileY = BaseMetrics::values.verticalSpacing + rect.y + (i - firstRow) * rowStep;
 
     const bool selected = selectedIndex == i;
 
@@ -806,6 +812,81 @@ void BaseTheme::fillPopupProgress(const GfxRenderer& renderer, const Rect& layou
   }
 
   renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+}
+
+BaseTheme::OptionPopupLayout BaseTheme::layoutOptionPopup(const GfxRenderer& renderer, const int optionCount,
+                                                          const int selectedIndex, const int firstVisible) {
+  // Rect's constructor is explicit, so the panel is spelled out rather than
+  // brace-initialised into the aggregate.
+  OptionPopupLayout layout{Rect(), optionPopupHeaderHeight, optionPopupRowHeight, 0, 0};
+
+  const int screenWidth = renderer.getScreenWidth();
+  const int screenHeight = renderer.getScreenHeight();
+  const int panelWidth = std::max(1, screenWidth - optionPopupSideMargin * 2);
+  // Stay clear of the screen edges: the activity's button hints sit there and a
+  // panel that touches them reads as part of the chrome.
+  const int maxPanelHeight = std::max(optionPopupHeaderHeight + optionPopupRowHeight, screenHeight * 3 / 4);
+  const int maxRows = std::max(1, (maxPanelHeight - optionPopupHeaderHeight) / optionPopupRowHeight);
+
+  layout.visibleRows = std::clamp(optionCount, 1, maxRows);
+  const int maxStart = std::max(0, optionCount - layout.visibleRows);
+  const int selected = std::clamp(selectedIndex, 0, std::max(0, optionCount - 1));
+  layout.firstVisible =
+      firstVisible >= 0 ? std::min(firstVisible, maxStart) : std::clamp(selected - layout.visibleRows + 1, 0, maxStart);
+
+  const int panelHeight = layout.headerHeight + layout.visibleRows * layout.rowHeight + optionPopupBottomPadding;
+  layout.panel = Rect{(screenWidth - panelWidth) / 2, (screenHeight - panelHeight) / 2, panelWidth, panelHeight};
+  return layout;
+}
+
+void BaseTheme::drawOptionPopup(const GfxRenderer& renderer, const char* title, const std::vector<std::string>& options,
+                                const int selectedIndex, const int firstVisible) const {
+  if (options.empty()) return;
+
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int optionCount = static_cast<int>(options.size());
+  const auto layout = layoutOptionPopup(renderer, optionCount, selectedIndex, firstVisible);
+  const Rect& panel = layout.panel;
+  const bool scrolls = optionCount > layout.visibleRows;
+  const int textInset = 12;
+  const int textRight = panel.x + panel.width - textInset - (scrolls ? 10 : 0);
+
+  // White interior first so the list underneath does not show through the rows.
+  renderer.fillRect(panel.x, panel.y, panel.width, panel.height, false);
+  renderer.drawRect(panel.x, panel.y, panel.width, panel.height, true);
+
+  const std::string shownTitle =
+      renderer.truncatedText(UI_10_FONT_ID, title, panel.width - textInset * 2, EpdFontFamily::BOLD);
+  const int titleY = panel.y + (layout.headerHeight - renderer.getLineHeight(UI_10_FONT_ID)) / 2;
+  renderer.drawText(UI_10_FONT_ID, panel.x + textInset, titleY, shownTitle.c_str(), true, EpdFontFamily::BOLD);
+  renderer.drawLine(panel.x, panel.y + layout.headerHeight - 1, panel.x + panel.width - 1,
+                    panel.y + layout.headerHeight - 1, true);
+
+  for (int slot = 0; slot < layout.visibleRows; ++slot) {
+    const int optionIndex = layout.firstVisible + slot;
+    if (optionIndex >= optionCount) break;
+
+    const Rect row = layout.optionRect(slot);
+    const bool selected = optionIndex == selectedIndex;
+    if (selected) renderer.fillRect(row.x + 2, row.y + 1, row.width - 4, row.height - 2, true);
+
+    const std::string label =
+        renderer.truncatedText(UI_10_FONT_ID, options[optionIndex].c_str(), textRight - row.x - textInset);
+    const int textY = row.y + (row.height - renderer.getLineHeight(UI_10_FONT_ID)) / 2;
+    renderer.drawText(UI_10_FONT_ID, row.x + textInset, textY, label.c_str(), !selected,
+                      selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
+  }
+
+  if (scrolls) {
+    const int trackX = panel.x + panel.width - metrics.scrollBarRightOffset - 1;
+    const int trackY = panel.y + layout.headerHeight;
+    const int trackHeight = layout.visibleRows * layout.rowHeight;
+    const int maxStart = std::max(1, optionCount - layout.visibleRows);
+    const int thumbHeight = std::max(8, trackHeight * layout.visibleRows / optionCount);
+    const int thumbY = trackY + layout.firstVisible * (trackHeight - thumbHeight) / maxStart;
+    renderer.drawLine(trackX, trackY, trackX, trackY + trackHeight, true);
+    renderer.fillRect(trackX - metrics.scrollBarWidth, thumbY, metrics.scrollBarWidth, thumbHeight, true);
+  }
 }
 
 void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, const int currentPage,

@@ -23,6 +23,9 @@ class LyraCarouselTheme final : public LyraTheme {
   void drawHomeMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                     const std::function<std::string(int index)>& buttonLabel,
                     const std::function<UIIcon(int index)>& rowIcon) const override;
+  // The icon strip owns the bottom edge of Home, so the hint row is skipped
+  // there (mirrors CrossMux, which omits drawButtonHints for the carousel).
+  bool homeHidesButtonHints() const override { return true; }
 
  private:
   mutable int lastCenterIndex_ = -1;

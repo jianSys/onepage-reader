@@ -209,6 +209,9 @@ The Settings screen allows you to configure the device's behavior. There are a f
   - "Lyra" - The new theme for Crosspoint featuring rounded elements and menu icons
   - "Lyra Extended" - Lyra, but displays 3 books instead of 1 on the **[Home Screen](#31-home-screen)**
   - "RoundedRaff" - A rounded theme with additional visual styling
+  - "Card" - Each row is drawn as a card with a selection frame
+  - "Lyra Carousel" - Lyra, but the **[Home Screen](#31-home-screen)** is a bottom icon strip (hint row hidden there)
+  - "Inx" - The flat CrossMux look: hairline header, dotted row separators, full-width inverted selection, boxed button hints
 
 - **Sunlight Fading Fix**: Configure whether to enable a software-fix for the issue where white X4 models may fade when used in direct sunlight:
   

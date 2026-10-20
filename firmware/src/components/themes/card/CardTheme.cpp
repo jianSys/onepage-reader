@@ -4,6 +4,7 @@
 #include <HalGPIO.h>
 #include <I18n.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -31,7 +32,7 @@
 namespace {
 // Card geometry shared by every draw* override.
 constexpr int cardCornerRadius = 6;
-constexpr int accentBarWidth = 3;   // left emphasis bar shown on the selected card
+constexpr int accentBarWidth = 3;  // left emphasis bar shown on the selected card
 constexpr int hPaddingInSelection = 8;
 constexpr int maxListValueWidth = 200;
 constexpr int mainMenuIconSize = 32;
@@ -135,8 +136,7 @@ void CardTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   }
 }
 
-void CardTheme::drawSubHeader(const GfxRenderer& renderer, Rect rect, const char* label,
-                              const char* rightLabel) const {
+void CardTheme::drawSubHeader(const GfxRenderer& renderer, Rect rect, const char* label, const char* rightLabel) const {
   const auto& m = CardMetrics::values;
   const int cardX = rect.x + m.contentSidePadding;
   const int cardW = rect.width - m.contentSidePadding * 2;
@@ -201,8 +201,7 @@ void CardTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     renderer.fillRect(scrollBarX - m.scrollBarWidth, scrollBarY, m.scrollBarWidth, scrollBarHeight, true);
   }
 
-  const int contentWidth =
-      rect.width - (totalPages > 1 ? (m.scrollBarWidth + m.scrollBarRightOffset) : 1);
+  const int contentWidth = rect.width - (totalPages > 1 ? (m.scrollBarWidth + m.scrollBarRightOffset) : 1);
   const int cardX = rect.x + m.contentSidePadding;
   const int cardW = contentWidth - m.contentSidePadding * 2;
   const int cardH = rowHeight - 6;  // leaves a vertical gap between stacked cards
@@ -242,8 +241,7 @@ void CardTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
 
     auto itemName = rowTitle(i);
     auto item = renderer.truncatedText(UI_10_FONT_ID, itemName.c_str(), rowTextWidth);
-    const int titleY =
-        (rowSubtitle != nullptr) ? cardY + 7 : cardY + (cardH - titleLineH) / 2;
+    const int titleY = (rowSubtitle != nullptr) ? cardY + 7 : cardY + (cardH - titleLineH) / 2;
     renderer.drawText(UI_10_FONT_ID, textX, titleY, item.c_str(), true);
 
     if (rowDimmed && rowDimmed(i) && !selected) {
@@ -317,8 +315,15 @@ void CardTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   const int tileWidth = rect.width - m.contentSidePadding * 2;
   const int tileX = rect.x + m.contentSidePadding;
 
-  for (int i = 0; i < buttonCount; ++i) {
-    const int tileY = rect.y + i * (m.menuRowHeight + m.menuSpacing);
+  // Long menus (Home gains a row per feature) must stay clear of the button-hint
+  // bar at the bottom: draw the window of rows that fits, scrolled to the selection.
+  const int rowStep = m.menuRowHeight + m.menuSpacing;
+  const int visibleRows = std::max(1, rect.height / rowStep);
+  const int safeSelectedIndex = std::max(0, selectedIndex);
+  const int firstRow = std::clamp(safeSelectedIndex - visibleRows + 1, 0, std::max(0, buttonCount - visibleRows));
+
+  for (int i = firstRow; i < buttonCount && i < firstRow + visibleRows; ++i) {
+    const int tileY = rect.y + (i - firstRow) * rowStep;
     const bool selected = selectedIndex == i;
     drawCardFrame(renderer, tileX, tileY, tileWidth, m.menuRowHeight, selected);
 
