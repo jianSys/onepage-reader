@@ -121,6 +121,11 @@ list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "OpdsBookBrowserActivity")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "OtaUpdateActivity")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "SdFirmwareUpdateActivity")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "FontDownloadActivity")
+# ...but keep WifiSelectionActivity: DictionaryDownloadActivity always starts there, and
+# its whole dependency set already links in the simulator (WifiCredentialStore lives in
+# src/, not src/network/; KeyboardEntryActivity is not filtered; shims/WiFi.h answers the
+# scan calls). Re-appended past the activities/network/ filter above.
+list(APPEND CROSSPOINT_SRC ${REPO_ROOT}/src/activities/network/WifiSelectionActivity.cpp)
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "KOReaderAuthActivity")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "KOReaderSettingsActivity")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX "KOReaderSyncActivity")

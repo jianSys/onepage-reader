@@ -128,6 +128,8 @@ bool Dictionary::open(const char* folderName) {
   htmlDefinitions = ifo.htmlDefinitions;
 
   basePath = std::move(resolved);
+  LOG_DBG("DICT", "Opened %s (.syn=%d, html=%d)", basePath.c_str(), static_cast<int>(hasSyn),
+          static_cast<int>(htmlDefinitions));
   return true;
 }
 

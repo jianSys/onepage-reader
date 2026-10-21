@@ -64,6 +64,12 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
     LOG_ERR("HTTP", "client init failed");
     return HttpDownloader::HTTP_ERROR;
   }
+#ifdef CROSSPOINT_SIM_HTTP_SHIM
+  // The simulator's esp_http_client shim polls this from libcurl's progress
+  // callback, so a cancel interrupts a stalled body instead of waiting for the
+  // next read(). ESP-IDF's client is an opaque struct with no such field.
+  client->cancelFlag = sink.cancelFlag;
+#endif
 
   esp_http_client_set_header(client, "User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
   if (!username.empty() && !password.empty()) {

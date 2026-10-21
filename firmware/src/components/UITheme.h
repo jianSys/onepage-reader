@@ -13,6 +13,8 @@ class UITheme {
   static UITheme instance;
 
  public:
+  enum class TextVerticalAlignment { TOP, CENTER, BOTTOM };
+
   UITheme();
   static UITheme& getInstance() { return instance; }
 
@@ -22,6 +24,12 @@ class UITheme {
                          bool hasSideButtonHints = false);
   static void drawCenteredText(const GfxRenderer& renderer, Rect screen, int fontId, int y, const char* text,
                                bool black = true, EpdFontFamily::Style style = EpdFontFamily::REGULAR);
+  // Wrapped variant of drawCenteredText: fits `text` into bounds, wrapping to at most
+  // maxLines, then centres the block horizontally and places it per verticalAlignment.
+  static void drawCenteredWrappedText(const GfxRenderer& renderer, Rect bounds, int fontId, const char* text,
+                                      int maxLines, bool black = true,
+                                      EpdFontFamily::Style style = EpdFontFamily::REGULAR,
+                                      TextVerticalAlignment verticalAlignment = TextVerticalAlignment::CENTER);
   void reload();
   void setTheme(CrossPointSettings::UI_THEME type);
   static int getNumberOfItemsPerPage(const GfxRenderer& renderer, bool hasHeader, bool hasTabBar, bool hasButtonHints,

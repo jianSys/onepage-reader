@@ -175,6 +175,12 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   if (s.sdFontFamilyName[0] != '\0') {
     doc["sdFontFamilyName"] = s.sdFontFamilyName;
   }
+  // Active dictionary folder name — also not in SettingsList (the downloader and the
+  // dictionary picker write it), so save it here. Without it the chosen dictionary
+  // reverted to "no dictionary" on every reboot.
+  if (s.dictionaryName[0] != '\0') {
+    doc["dictionaryName"] = s.dictionaryName;
+  }
 
   // Language -- managed by LanguageSelectActivity, not in SettingsList.
   // Stored as ISO code string ("EN", "DE", ...) for stability across enum reorders.
@@ -313,6 +319,11 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   const char* sfn = doc["sdFontFamilyName"] | "";
   strncpy(s.sdFontFamilyName, sfn, sizeof(s.sdFontFamilyName) - 1);
   s.sdFontFamilyName[sizeof(s.sdFontFamilyName) - 1] = '\0';
+  // Active dictionary folder name — same manual treatment as sdFontFamilyName above.
+  if (doc["dictionaryName"].is<const char*>()) {
+    strncpy(s.dictionaryName, doc["dictionaryName"].as<const char*>(), sizeof(s.dictionaryName) - 1);
+    s.dictionaryName[sizeof(s.dictionaryName) - 1] = '\0';
+  }
   if (storedFontFamily == CrossPointSettings::LEGACY_OPENDYSLEXIC && s.sdFontFamilyName[0] == '\0') {
     s.fontFamily = CrossPointSettings::NOTOSERIF;
     strncpy(s.sdFontFamilyName, "OpenDyslexic", sizeof(s.sdFontFamilyName) - 1);

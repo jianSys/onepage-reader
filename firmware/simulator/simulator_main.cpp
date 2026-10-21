@@ -63,7 +63,15 @@ uint8_t map_key_to_button(SDL_Keycode key) {
 
 // CPSIM_KEYS playback lets a visual check walk to a given screen without a
 // human at the keyboard, so CPSIM_DUMP_BMP can capture it: "DOWN,DOWN,ENTER"
-// presses one button every kKeyStepMs after a settle delay.
+// presses one button every kKeyStepMs after a settle delay. A "HOLD_" prefix means the
+// press is long (it still auto-releases after CPSIM_KEY_HOLD_MS, which must then exceed
+// the firmware's long-press threshold); "RELEASE_" injects a bare release edge.
+struct ScriptedKey {
+  uint8_t button;
+  bool press;  // false = a RELEASE_ edge
+  bool hold;   // true = a HOLD_ press: no auto-release
+};
+
 uint8_t button_for_name(const std::string& name) {
   if (name == "UP") return HalGPIO::BTN_UP;
   if (name == "DOWN") return HalGPIO::BTN_DOWN;
@@ -75,17 +83,28 @@ uint8_t button_for_name(const std::string& name) {
   return 0xFF;
 }
 
-std::vector<uint8_t> parse_key_script(const char* spec) {
-  std::vector<uint8_t> script;
+std::vector<ScriptedKey> parse_key_script(const char* spec) {
+  std::vector<ScriptedKey> script;
   if (spec == nullptr || *spec == '\0') return script;
   std::string token;
   for (const char* p = spec;; ++p) {
     if (*p == ',' || *p == '\0') {
-      const uint8_t button = button_for_name(token);
+      bool press = true;
+      bool hold = false;
+      std::string name = token;
+      if (name.rfind("HOLD_", 0) == 0) {
+        press = true;
+        hold = true;
+        name = name.substr(5);
+      } else if (name.rfind("RELEASE_", 0) == 0) {
+        press = false;
+        name = name.substr(8);
+      }
+      const uint8_t button = button_for_name(name);
       if (button == 0xFF) {
         std::fprintf(stderr, "[SIM] CPSIM_KEYS: unknown key \"%s\" ignored\n", token.c_str());
       } else {
-        script.push_back(button);
+        script.push_back({button, press, hold});
       }
       token.clear();
       if (*p == '\0') break;
@@ -100,6 +119,23 @@ constexpr Uint32 kKeySettleMs = 1500;  // boot + first paint
 constexpr Uint32 kKeyHoldMs = 500;     // must span a full e-ink refresh to be seen
 constexpr Uint32 kKeyGapMs = 350;      // settle time between two scripted presses
 
+// Hold time override for scripted playback. 500 ms is deliberately longer than the
+// firmware's long-press threshold, so a scripted press also fires the *continuous*
+// (page-wise) handler: fine enough to open a screen, too coarse to walk a list one row
+// at a time. CPSIM_KEY_HOLD_MS=200 turns each scripted press into a short tap that only
+// moves one row; it must stay well above one loop iteration or press and release land in
+// the same GPIO frame and both edges fire together (see hal/HalGPIO.cpp's two-stage buffer).
+Uint32 key_hold_ms() {
+  const char* value = std::getenv("CPSIM_KEY_HOLD_MS");
+  if (value == nullptr || *value == '\0') return kKeyHoldMs;
+  const long parsed = std::strtol(value, nullptr, 10);
+  if (parsed < 60 || parsed > 2000) {
+    std::fprintf(stderr, "[SIM] CPSIM_KEY_HOLD_MS: \"%s\" out of range 60..2000, using %u\n", value, kKeyHoldMs);
+    return kKeyHoldMs;
+  }
+  return static_cast<Uint32>(parsed);
+}
+
 }  // namespace
 
 namespace simulator {
@@ -111,6 +147,9 @@ void injectButton(uint8_t buttonIndex, bool down);
 std::string g_simulator_sd_root;
 
 int main(int argc, char** argv) {
+  // Our [SIM] trace and the firmware's LOG_* lines share stdout/stderr but come from
+  // different streams; unbuffered keeps them interleaved in true time order.
+  setvbuf(stderr, nullptr, _IONBF, 0);
   CliArgs args = parse_args(argc, argv);
   g_simulator_sd_root = args.sdRoot;
 
@@ -138,10 +177,12 @@ int main(int argc, char** argv) {
   // owns the SDL window/event loop.
   simulator::startFirmwareTask();
 
-  const std::vector<uint8_t> keyScript = parse_key_script(std::getenv("CPSIM_KEYS"));
+  const std::vector<ScriptedKey> keyScript = parse_key_script(std::getenv("CPSIM_KEYS"));
+  const Uint32 keyHoldMs = key_hold_ms();
   size_t keyIndex = 0;
   Uint32 keyReleaseAtMs = 0;
   uint8_t keyDown = 0xFF;
+  bool keyHeld = false;  // set by a HOLD_ entry: no auto-release until the next entry
   // Chained off the previous press rather than an absolute schedule: an e-ink
   // refresh can block the loop for seconds, and a fixed schedule would then
   // fire the remaining keys back-to-back and drop some.
@@ -201,15 +242,26 @@ int main(int argc, char** argv) {
 
     // Scripted playback: press on schedule, release a moment later. Injected
     // before presentIfDirty() so the resulting repaint lands in the same frame.
+    // Every press auto-releases after key_hold_ms (that is what makes a HOLD_ long
+    // enough to trip the firmware's handlers); a RELEASE_ entry can cut a hold short.
     if (keyDown != 0xFF && nowMs >= keyReleaseAtMs) {
       simulator::injectButton(keyDown, false);
       keyDown = 0xFF;
+      keyHeld = false;
     }
     if (keyDown == 0xFF && keyIndex < keyScript.size() && nowMs >= nextKeyAtMs) {
-      keyDown = keyScript[keyIndex++];
-      keyReleaseAtMs = nowMs + kKeyHoldMs;
+      const ScriptedKey& entry = keyScript[keyIndex];
+      keyIndex++;
+      keyDown = entry.button;
+      keyHeld = entry.hold;
+      keyReleaseAtMs = nowMs + keyHoldMs;
       nextKeyAtMs = keyReleaseAtMs + kKeyGapMs;
-      simulator::injectButton(keyDown, true);
+      simulator::injectButton(entry.button, entry.press);
+      if (!entry.press) {  // a RELEASE_ edge is one shot: nothing stays down
+        keyDown = 0xFF;
+        keyHeld = false;
+        nextKeyAtMs = nowMs + kKeyGapMs;
+      }
     }
 
     simulator::SimulatorWindow::instance().presentIfDirty();

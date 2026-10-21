@@ -134,6 +134,12 @@ void BaseTheme::drawBatteryRight(const GfxRenderer& renderer, Rect rect, const b
   fillBatteryIcon(renderer, iconRect, percentage);
 }
 
+int BaseTheme::measureProgressBarHeight(const GfxRenderer& renderer, const int barHeight,
+                                        const bool showPercentage) const {
+  constexpr int percentageGap = 15;
+  return barHeight <= 0 ? 0 : barHeight + (showPercentage ? percentageGap + renderer.getLineHeight(UI_10_FONT_ID) : 0);
+}
+
 void BaseTheme::drawProgressBar(const GfxRenderer& renderer, Rect rect, const size_t current,
                                 const size_t total) const {
   if (total == 0) {

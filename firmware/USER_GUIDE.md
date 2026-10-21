@@ -614,14 +614,38 @@ To open bookmarks, press **Confirm** while inside a book. Then navigate to the *
 
 Bookmarks are stored in the `.crosspoint/bookmarks` folder in the JSON format.
 
+---
+
+### 5.3 Dictionary Lookup
+
+Look up any word while reading without leaving the page.
+
+**1. Turn the gesture on.** Holding **Confirm** in a book runs whatever you pick for
+*Settings → Controls → Long-press Menu*. Choose **Dictionary** (the default is *Disabled*, so
+long-press does nothing until you set it).
+
+**2. Get a dictionary.** Open *Settings → Reader → Manage Dictionaries*. Connect to Wi-Fi when
+asked; the device then fetches the CrossMux catalogue over the network and lists the available
+StarDict dictionaries. Highlight one and press **Confirm** — it downloads with a progress bar,
+is checked against the catalogue's CRC32, installed atomically, and set as the active dictionary.
+The download is resumable-safe: a cancelled or corrupt transfer leaves your previously installed
+dictionary untouched. (You can also copy a StarDict folder onto the SD card by hand — see
+[`docs/dictionary.md`](docs/dictionary.md).)
+
+**3. Look a word up.** Inside a book, hold **Confirm** for about half a second. The current word
+is highlighted. Use the four buttons to move the highlight onto the word you want, then press
+**Confirm** to open its definition. Page through a long entry with the next/previous buttons and
+press **Back** to return to the text.
+
+If no StarDict dictionary is selected, the lookup falls back to the built-in flat word list
+(`data/.dict/dictionary.txt`), so a plain-text glossary still works out of the box.
+
 ## 6. Current Limitations & Roadmap
 
 Please note that this firmware is currently in active development. The following features are **not yet supported** but are planned for future updates:
 
 * **Cover Images:** Large cover images embedded into EPUB require several seconds (~10s for ~2000 pixel tall image) to convert for sleep screen and home screen thumbnail. Consider optimizing the EPUB with e.g. https://github.com/bigbag/epub-to-xtc-converter to speed this up.
 * **Unsupported Image Formats:** Most JPG and PNG images in EPUBs render correctly. GIFs and progressive JPEGs are not supported and will fall back to an `[Image]` placeholder.
-* 
-* **Dictionary Lookup:** Inline word lookup is not yet implemented.
 
 ---
 

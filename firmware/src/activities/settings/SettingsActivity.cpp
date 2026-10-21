@@ -14,6 +14,7 @@
 #endif
 #include "ClearCacheActivity.h"
 #include "CrossPointSettings.h"
+#include "DictionaryDownloadActivity.h"
 #include "FontDownloadActivity.h"
 #include "FontSelectionActivity.h"
 #include "KOReaderSettingsActivity.h"
@@ -78,6 +79,9 @@ void SettingsActivity::rebuildSettingsLists() {
   // Insert "Manage Fonts" right after the font family setting so users discover it naturally
   readerSettings.insert(readerSettings.begin() + 1,
                         SettingInfo::Action(StrId::STR_MANAGE_FONTS, SettingAction::DownloadFonts));
+  // Same treatment for the online dictionary catalogue (see DictionaryDownloadActivity)
+  readerSettings.insert(readerSettings.begin() + 2,
+                        SettingInfo::Action(StrId::STR_MANAGE_DICTIONARIES, SettingAction::DownloadDictionaries));
   readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
 
   // Update currentSettings pointer and count for the active category
@@ -382,6 +386,15 @@ void SettingsActivity::toggleCurrentSetting() {
         break;
       case SettingAction::DownloadFonts:
         startActivityForResult(std::make_unique<FontDownloadActivity>(renderer, mappedInput),
+                               [this](const ActivityResult&) {
+                                 SETTINGS.saveToFile();
+                                 rebuildSettingsLists();
+                               });
+        break;
+      case SettingAction::DownloadDictionaries:
+        // The downloader writes SETTINGS.dictionaryName itself, so the handler only needs
+        // to re-read the list (the row count and update badges come from the catalogue).
+        startActivityForResult(std::make_unique<DictionaryDownloadActivity>(renderer, mappedInput),
                                [this](const ActivityResult&) {
                                  SETTINGS.saveToFile();
                                  rebuildSettingsLists();

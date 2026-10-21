@@ -94,8 +94,28 @@ class String {
   void toLowerCase() {
     for (auto& c : data_) c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
   }
+
   void toUpperCase() {
     for (auto& c : data_) c = static_cast<char>(::toupper(static_cast<unsigned char>(c)));
+  }
+
+  // Arduino core API: replaces every occurrence in place. A NULL/empty search string is a
+  // no-op (the core behaves the same; searching for "" would match every position).
+  void replace(const char* before, const char* after) {
+    if (!before || !after || before[0] == '\0') return;
+    const std::string from(before);
+    const std::string to(after);
+    size_t pos = 0;
+    while ((pos = data_.find(from, pos)) != std::string::npos) {
+      data_.replace(pos, from.length(), to);
+      pos += to.length();
+    }
+  }
+  void replace(char before, char after) {
+    if (before == '\0') return;
+    for (auto& c : data_) {
+      if (c == before) c = after;
+    }
   }
 
   void trim() {

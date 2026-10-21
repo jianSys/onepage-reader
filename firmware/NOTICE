@@ -17,12 +17,13 @@ CrossPoint Reader copyright).
 
 ### Current status
 
-- **No CrossMux source code has been merged into OnePage yet.** At this baseline the repo contains only:
-  - OnePage-authored code that was *independently written* and merely *modeled on* CrossMux's design language
-    (the `Tools`/`ToolApp`/`ToolsUi` code and comments referencing "crossmux-style"). This is original work and needs
-    no per-file upstream copyright.
-  - A compiled CrossMux firmware binary used only as a web download artifact (`web/public/firmware/crossmux-onepage.bin`),
-    not source.
+- The **online dictionary downloader** has been vendored and ported from CrossMux (see the register below). Each ported
+  file keeps the `Ported from CrossMux … modified by OnePage.` header line.
+- Everything else that merely looks CrossMux-flavoured is still OnePage-authored code *modeled on* CrossMux's design
+  language (the `Tools`/`ToolApp`/`ToolsUi` code and comments referencing "crossmux-style"). That is original work and
+  needs no per-file upstream copyright.
+- A compiled CrossMux firmware binary is used only as a web download artifact
+  (`web/public/firmware/crossmux-onepage.bin`), not source.
 
 ### Attribution policy for future ports (Phase 2+)
 
@@ -39,4 +40,12 @@ MIT requires the copyright notice and permission notice be included in all copie
 
 ### Register of ported components
 
-_(empty — entries are added as Phase 2+ ports land)_
+| Component | OnePage path | CrossMux source | Ported | Notable modifications |
+| --- | --- | --- | --- | --- |
+| Online dictionary downloader (screen) | `src/activities/settings/DictionaryDownloadActivity.{h,cpp}` | `apps/.../DictionaryDownloadActivity.{h,cpp}` | 2026-10-21 | Dropped the freeink `UiAppHost`/`UiScreen` layer and all touch/swipe routing for a `loop()` button dispatch + `render()` direct draw; `HalSystem::getHeapInfo()` → `ESP.getFreeHeap()/getMaxAllocHeap()`; `Storage.getSpace()` pre-check replaced by mapping `HttpDownloader::FILE_ERROR` to the out-of-space string; `renderer.requestNextFullRefresh()` → a `forceFullRefreshNext_` flag consumed as a `FULL_REFRESH` in `render()`. |
+| Dictionary manifest endpoint | `src/network/CrossMuxEndpoints.h` | `.../CrossMuxEndpoints` (dictionary subset) | 2026-10-21 | Only the dictionary manifest is carried; host is derived from the UI language (CrossMux used a `contentProfile` switch OnePage lacks) and the language query maps `ZH_HANS/ZH_HANT` → `ZH_CN/ZH_TW`. |
+| Sub-page layout helpers | `src/components/SubpageLayout.h` | `components/SubpageLayout` | 2026-10-21 | Header-only geometry helpers; unchanged in spirit, wired to OnePage's `UITheme` metrics. |
+
+Supporting OnePage-authored additions these ports depend on (not copies): `UITheme::drawCenteredWrappedText` and
+`BaseTheme::measureProgressBarHeight`, the `STR_DICTIONARY_*` i18n keys, and the simulator `esp_rom_crc.h` /
+`esp_http_client.h` shims.

@@ -170,8 +170,9 @@ void selfTest() {}
   void Cls::loop() {}           \
   void Cls::render(RenderLock&&) {}
 
-#include "activities/network/WifiSelectionActivity.h"
-STUB_ACTIVITY_BASE(WifiSelectionActivity)
+// WifiSelectionActivity is NOT stubbed: the real activity is compiled in (see
+// simulator/CMakeLists.txt) because DictionaryDownloadActivity always routes through it,
+// and shims/WiFi.h answers its scan/connect calls with one open fake network.
 
 #include "activities/network/CrossPointWebServerActivity.h"
 STUB_ACTIVITY_BASE(CrossPointWebServerActivity)

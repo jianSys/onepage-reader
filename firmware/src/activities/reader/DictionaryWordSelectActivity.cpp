@@ -58,6 +58,10 @@ void DictionaryWordSelectActivity::performLookup() {
   std::string headword;
   Dictionary::LookupResult result = Dictionary::LookupResult::NotFound;
   const bool found = ok && dict.lookup(lookupText.c_str(), definition, headword, &result);
+  // The definition itself is often multi-line and in the target language, so log the
+  // match only: it is the one line that tells a reader-side failure from a download-side one.
+  LOG_DBG("DICT", "Lookup \"%s\": %s (%u bytes)", lookupText.c_str(), found ? "found" : "not found",
+          static_cast<unsigned>(definition.size()));
 
   if (found) {
     {

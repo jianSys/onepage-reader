@@ -179,6 +179,9 @@ class BaseTheme {
 
   // Component drawing methods
   void drawProgressBar(const GfxRenderer& renderer, Rect rect, size_t current, size_t total) const;
+  // Vertical footprint of a progress bar block: the bar itself, plus the percentage line
+  // when the caller shows one (our drawProgressBar paints no label, so pass false).
+  int measureProgressBarHeight(const GfxRenderer& renderer, int barHeight, bool showPercentage = true) const;
   void drawBatteryLeft(const GfxRenderer& renderer, Rect rect,
                        bool showPercentage = true) const;  // Left aligned (reader mode)
   void drawBatteryRight(const GfxRenderer& renderer, Rect rect,
