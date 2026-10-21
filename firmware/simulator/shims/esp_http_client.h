@@ -10,8 +10,14 @@
 //
 // The public surface mirrors only what HttpDownloader.cpp actually calls.
 
+// HttpDownloader uses this to reach shim-only members. The only such member it
+// touches — cancelFlag — exists solely in the native libcurl shim, so keep the
+// macro undefined for the Emscripten build too, where esp_http_client_t has no
+// such field. Mirrors the #ifndef __EMSCRIPTEN__ guard on the member itself.
 #ifndef CROSSPOINT_SIM_HTTP_SHIM
-#define CROSSPOINT_SIM_HTTP_SHIM 1  // HttpDownloader uses this to reach shim-only members
+#ifndef __EMSCRIPTEN__
+#define CROSSPOINT_SIM_HTTP_SHIM 1
+#endif
 #endif
 
 #include <algorithm>

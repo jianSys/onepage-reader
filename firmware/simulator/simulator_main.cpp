@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@ namespace {
 
 struct CliArgs {
   std::string sdRoot = SIMULATOR_DEFAULT_SD_ROOT;
+  bool sdRootProvided = false;  // --sd-root given: honour it verbatim
   int scale = SIMULATOR_WINDOW_SCALE;
 };
 
@@ -29,6 +31,7 @@ CliArgs parse_args(int argc, char** argv) {
     std::string a = argv[i];
     if (a == "--sd-root" && i + 1 < argc) {
       args.sdRoot = argv[++i];
+      args.sdRootProvided = true;
     } else if (a == "--scale" && i + 1 < argc) {
       args.scale = std::atoi(argv[++i]);
     } else if (a == "--help" || a == "-h") {
@@ -151,6 +154,23 @@ int main(int argc, char** argv) {
   // different streams; unbuffered keeps them interleaved in true time order.
   setvbuf(stderr, nullptr, _IONBF, 0);
   CliArgs args = parse_args(argc, argv);
+
+  // Resolve the default SD root relative to the executable, not the current
+  // working directory. The stock native build lives in simulator/build/, so
+  // <exe>/../sd_root is simulator/sd_root — the folder carrying the demo books,
+  // fonts and the .crosspoint cache. The compile-time default ("./simulator/
+  // sd_root") only resolves when launched from firmware/, so starting from
+  // anywhere else silently mounted an empty folder and looked like "no SD
+  // card". An explicit --sd-root is always honoured verbatim.
+  if (!args.sdRootProvided) {
+    char* base = SDL_GetBasePath();
+    if (base != nullptr) {
+      const std::string candidate = std::string(base) + "../sd_root";
+      SDL_free(base);
+      std::error_code ec;
+      if (std::filesystem::is_directory(candidate, ec)) args.sdRoot = candidate;
+    }
+  }
   g_simulator_sd_root = args.sdRoot;
 
   simulator::HostSettings hostSettings;  // defaults from HostSettings struct
