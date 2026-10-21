@@ -6,10 +6,14 @@
 //   - WASM:   the browser calls the exported simulator_inject_button() (keyboard + touch).
 // Both paths funnel through simulator::injectButton(). Hold-time tracking uses millis()
 // (arduino-host, a monotonic std::chrono clock available to both builds).
+//
+// simulator::waitForPowerWakeup() parks the firmware thread while the browser build is
+// "asleep" — see HalPowerManager::startDeepSleep().
 
 #include <Arduino.h>  // millis()
 #include <HalGPIO.h>
 
+#include <condition_variable>
 #include <cstdlib>
 #include <mutex>
 
@@ -39,6 +43,13 @@ std::mutex& state_mutex() {
   return m;
 }
 
+// Signalled by injectButton() so a thread parked in waitForPowerWakeup() wakes on the
+// event instead of polling.
+std::condition_variable& state_cv() {
+  static std::condition_variable cv;
+  return cv;
+}
+
 ButtonStates g_buttons[kButtonCount];
 }  // namespace
 
@@ -52,10 +63,27 @@ void injectButton(uint8_t buttonIndex, bool down) {
     b.pressed = true;
     b.pendingPressed = true;
     b.pressedAtMs = millis();
+    state_cv().notify_all();
   } else if (!down && b.pressed) {
     b.pressed = false;
     b.pendingReleased = true;
+    state_cv().notify_all();
   }
+}
+
+// Park the calling (firmware) thread until the power button is tapped again. There is no
+// chip reset to wait for on a host, and the browser must keep painting while we idle —
+// so this blocks on the button state, which the page's main thread keeps updating.
+//
+// Three phases, because the press that put us to sleep is still held when we get here:
+// let go of it, then a fresh press, then release that press. One tap is a wake-up.
+void waitForPowerWakeup() {
+  std::unique_lock<std::mutex> lock(state_mutex());
+  const auto held = [] { return g_buttons[HalGPIO::BTN_POWER].pressed; };
+  auto& cv = state_cv();
+  cv.wait(lock, [&held] { return !held(); });
+  cv.wait(lock, [&held] { return held(); });
+  cv.wait(lock, [&held] { return !held(); });
 }
 }  // namespace simulator
 
@@ -128,8 +156,14 @@ unsigned long HalGPIO::getHeldTime() const {
 }
 
 unsigned long HalGPIO::getPowerButtonHeldTime() const {
-  // No physical power button on the host simulator — treat as never held.
-  return 0;
+  // BTN_POWER is injected like any other key (Esc on both frontends), so report how long
+  // it has actually been down. Returning a constant here is what silently disabled
+  // "hold the power button to sleep" in the simulator: main.cpp compares this against
+  // SETTINGS.getPowerButtonDuration(), and 0 never clears that bar.
+  std::lock_guard<std::mutex> lock(state_mutex());
+  const ButtonStates& power = g_buttons[BTN_POWER];
+  if (!power.pressed || power.pressedAtMs == 0) return 0;
+  return millis() - power.pressedAtMs;
 }
 
 #ifdef __EMSCRIPTEN__

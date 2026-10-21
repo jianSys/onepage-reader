@@ -53,6 +53,9 @@ FontDecompressor fontDecompressor;
 SdCardFontSystem sdFontSystem;
 FontCacheManager fontCacheManager(renderer.getFontMap(), renderer.getSdCardFonts());
 static unsigned long allowSleepAt = 0;
+// Last button press / background activity. File scope so the simulator's sleep-wake path
+// can re-arm it (it used to be a loop() local); 0 means "not initialised this boot".
+static unsigned long lastActivityTime = 0;
 
 // Fonts
 EpdFont notoserif14RegularFont(&notoserif_14_regular);
@@ -245,6 +248,22 @@ void enterDeepSleep(bool fromTimeout = false) {
   LOG_DBG("MAIN", "Entering deep sleep");
 
   powerManager.startDeepSleep(gpio);
+
+  // Hardware never reaches this line — deep sleep is a chip reset. The simulator returns
+  // here once the power button is tapped again, and the machine is still in the slept
+  // state we left it: SleepActivity replaced the activity stack (and has no loop), the
+  // inactivity timer would put us straight back to sleep on the next pass, and
+  // deepSleepInProgress still gates the silent-restart paths. Put it back, routing like a
+  // boot would minus the splash — there is no reboot here to hide a slow load behind.
+  deepSleepInProgress = false;
+  lastActivityTime = millis();
+  allowSleepAt = millis() + 2000;
+  if (APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
+      APP_STATE.readerActivityLoadCount > 0) {
+    activityManager.goHome();
+  } else {
+    activityManager.goToReader(APP_STATE.openEpubPath);
+  }
 }
 
 // Panel, renderer and the flash-resident (builtin) fonts only — deliberately
@@ -635,7 +654,7 @@ void loop() {
   }
 
   // Check for any user activity (button press or release) or active background work
-  static unsigned long lastActivityTime = millis();
+  if (lastActivityTime == 0) lastActivityTime = millis();  // first pass after boot
   if (gpio.wasAnyPressed() || gpio.wasAnyReleased() || halTiltSensor.hadActivity() ||
       activityManager.preventAutoSleep()) {
     lastActivityTime = millis();         // Reset inactivity timer
