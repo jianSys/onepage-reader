@@ -1176,9 +1176,10 @@ void EpubReaderActivity::render(RenderLock&& lock) {
   }
 
   // Reserve room at the bottom for the word-lookup hint bar so it never covers
-  // the last line of text while a word is selected.
+  // the last line of text while a word is selected. Height matches the bar
+  // painted in renderContents() (UI_12 glyph box + 2px top/bottom padding).
   if (wordSelectMode_) {
-    orientedMarginBottom += 18;
+    orientedMarginBottom += renderer.getTextHeight(UI_12_FONT_ID) + 4;
   }
 
   const uint16_t viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
@@ -1517,9 +1518,16 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   drawRuledLines(*page, fontId, orientedMarginTop, orientedMarginLeft, orientedMarginRight);
   renderStatusBar();
   if (highlight) {
-    const int hy = renderer.getScreenHeight() - 16;
-    renderer.fillRect(0, hy, renderer.getScreenWidth(), 16, true);
-    renderer.drawText(UI_12_FONT_ID, 8, hy + 3, tr(STR_WORD_LOOKUP_HINT), false);
+    // Paint the hint in the band reserved above the status bar (see the
+    // orientedMarginBottom reserve in renderPage). The previous code anchored a
+    // fixed 16px bar to the screen's bottom edge, which collided with the status
+    // bar and clipped UI_12 glyphs (taller than the 13px left under "hy + 3"), so
+    // the hint showed up half-cut. drawText's y is the em-box top, so a 2px pad
+    // plus a font-sized height keeps the whole line inside the bar.
+    const int hintH = renderer.getTextHeight(UI_12_FONT_ID) + 4;  // keep in sync with the reserve
+    const int hintTop = renderer.getScreenHeight() - orientedMarginBottom;
+    renderer.fillRect(0, hintTop, renderer.getScreenWidth(), hintH, true);
+    renderer.drawText(UI_12_FONT_ID, 8, hintTop + 2, tr(STR_WORD_LOOKUP_HINT), false);
   }
   const auto tBwRender = millis();
 
