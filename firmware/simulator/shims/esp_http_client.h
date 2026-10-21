@@ -4,9 +4,11 @@
 //     read() drains, mirroring the device client's open/fetch_headers/read loop
 //     so HttpDownloader (downloadToFile + postJson) sees incremental progress,
 //     short reads and mid-transfer aborts while driving the live network.
-//   - WASM:   offline stub. open/fetch_headers report failure so the same
-//     call sites bail gracefully without pulling libcurl into the browser
-//     build (which has no socket access anyway).
+//   - WASM:   emscripten_fetch backend. The firmware task that calls here runs
+//     on a Web Worker thread (FreeRTOS-on-pthread), where a SYNCHRONOUS fetch
+//     buffers the whole body into the same FIFO that read() drains. Any failure
+//     (offline, DNS, CORS) degrades to the previous stub's behavior - status 0,
+//     fetch_headers returns -1 - so call sites bail out exactly as before.
 //
 // The public surface mirrors only what HttpDownloader.cpp actually calls.
 
@@ -23,6 +25,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -31,6 +34,9 @@
 
 #ifndef __EMSCRIPTEN__
 #include <curl/curl.h>
+#else
+#include <emscripten/fetch.h>
+#include <emscripten/threading.h>
 #endif
 
 #ifdef __cplusplus
@@ -61,10 +67,11 @@ struct esp_http_client_t {
   std::string url;
   esp_http_client_method_t method = HTTP_METHOD_GET;
   int timeout_ms = 0;
-  bool follow_redirects = true;  // libcurl owns redirects in native; WASM stub never reaches them.
+  bool follow_redirects = true;  // libcurl owns redirects in native, the browser in WASM; neither surfaces a 30x.
 
   // Outgoing headers, accumulated through esp_http_client_set_header(). Native
-  // serializes them into a curl_slist at perform time; WASM never reads them.
+  // serializes them into a curl_slist at perform time; WASM passes them to
+  // emscripten_fetch, skipping User-Agent (a forbidden header in browsers).
   std::vector<std::pair<std::string, std::string>> headers;
 
   // Outgoing body for POST/PUT (filled by esp_http_client_write).
@@ -82,8 +89,9 @@ struct esp_http_client_t {
   const bool* cancelFlag = nullptr;
 #endif
 
-  // Body FIFO: curl's write callback appends during perform(), read() pops the
-  // front. Kept separate from the request body because a redirect-driven
+  // Body FIFO: curl's write callback (native) or fetch_headers' buffering
+  // (WASM) appends during the transfer, read() pops the front. Kept separate
+  // from the request body because a redirect-driven
   // open()/fetch_headers() pair re-enters perform() with a partially drained body.
   std::vector<char> stream_body;
   bool stream_aborted = false;  // read() returned 0 while data remained: caller gave up
@@ -172,17 +180,78 @@ inline int esp_http_client_write(esp_http_client_handle_t client, const char* da
   return len;
 }
 
-// Drives libcurl synchronously, streaming the body into the FIFO. Returns the
-// response's Content-Length when known (libcurl exposes it via
+// Drives the transfer synchronously, streaming the body into the FIFO. Native
+// returns the response's Content-Length when known (libcurl exposes it via
 // CURLINFO_CONTENT_LENGTH_DOWNLOAD_T), or the buffered body size on chunked
-// responses. WASM build always fails (offline).
+// responses. WASM buffers the whole body up front (LOAD_TO_MEMORY) and reports
+// the same shape; any browser-level failure degrades to the offline-stub
+// contract (status 0, return -1) so HttpDownloader maps it to HTTP_ERROR.
 inline int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client) {
   if (!client) return -1;
 #ifdef __EMSCRIPTEN__
+  // Synchronous emscripten_fetch aborts if run on the main browser thread;
+  // firmware tasks are Web Workers, so that should never happen, but a
+  // mis-scheduled call must not crash the page - report offline instead.
+  if (emscripten_is_main_runtime_thread()) {
+    client->performed = true;
+    client->complete = false;
+    client->status = 0;
+    return -1;
+  }
+
+  emscripten_fetch_attr_t attr;
+  emscripten_fetch_attr_init(&attr);
+  const char* methodName = "GET";
+  switch (client->method) {
+    case HTTP_METHOD_POST: methodName = "POST"; break;
+    case HTTP_METHOD_PUT: methodName = "PUT"; break;
+    case HTTP_METHOD_DELETE: methodName = "DELETE"; break;
+    case HTTP_METHOD_HEAD: methodName = "HEAD"; break;
+    case HTTP_METHOD_GET:
+    default: break;
+  }
+  snprintf(attr.requestMethod, sizeof(attr.requestMethod), "%s", methodName);
+  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
+  if (!client->req_body.empty()) {
+    attr.requestData = client->req_body.data();
+    attr.requestDataSize = client->req_body.size();
+  }
+  // Keep the serialized lines alive for the duration of the blocking fetch.
+  std::vector<std::string> headerLines;
+  headerLines.reserve(client->headers.size());
+  for (const auto& kv : client->headers) {
+    if (kv.first == "User-Agent") continue;  // forbidden header: XHR would drop it anyway
+    headerLines.emplace_back(kv.first + ": " + kv.second);
+  }
+  std::vector<const char*> rawHeaders;
+  rawHeaders.reserve(headerLines.size() + 1);
+  for (const auto& line : headerLines) rawHeaders.push_back(line.c_str());
+  if (!rawHeaders.empty()) {
+    rawHeaders.push_back(nullptr);  // emscripten_fetch expects a NULL-terminated array
+    attr.requestHeaders = rawHeaders.data();
+  }
+  // timeout_ms is a per-socket-op budget on the device (60 s); as a
+  // whole-transfer cap it would cut off large dictionary downloads. The browser
+  // bounds dead connections itself and surfaces that as a fetch failure here.
+
+  emscripten_fetch_t* fetch = emscripten_fetch(&attr, client->url.c_str());
   client->performed = true;
-  client->complete = false;
-  client->status = 0;
-  return -1;
+  if (!fetch) {
+    client->complete = false;
+    client->status = 0;
+    return -1;
+  }
+  client->status = fetch->status;  // 0 on DNS/CORS/transport failure
+  if (client->status == 0) {
+    emscripten_fetch_close(fetch);
+    client->complete = false;
+    return -1;
+  }
+  client->content_length = fetch->totalBytes > 0 ? static_cast<long>(fetch->totalBytes) : -1;
+  client->stream_body.assign(fetch->data, fetch->data + fetch->numBytes);
+  emscripten_fetch_close(fetch);
+  client->complete = true;  // LOAD_TO_MEMORY means the body arrived in full
+  return client->content_length > 0 ? client->content_length : static_cast<int64_t>(client->stream_body.size());
 #else
   if (!client->curl) return -1;
   curl_easy_reset(client->curl);
@@ -272,14 +341,10 @@ inline int esp_http_client_get_status_code(esp_http_client_handle_t client) {
   return client->status;
 }
 
-// Pops the FIFO. Returns 0 at end of body, -1 on a transport error (curl gave
-// up before the body was complete) or when the caller stopped reading a body
-// that still had data left - HttpDownloader maps both to HTTP_ERROR.
-#ifdef __EMSCRIPTEN__
-inline int esp_http_client_read(esp_http_client_handle_t /*client*/, char* /*buffer*/, int /*len*/) {
-  return -1;  // offline stub: fetch_headers already failed, so no body exists
-}
-#else
+// Pops the FIFO (identical in both builds now that WASM fills it). Returns 0
+// at end of body, -1 on a transport error (the transfer failed before a body
+// existed) or when the caller stopped reading a body that still had data left
+// - HttpDownloader maps both to HTTP_ERROR.
 inline int esp_http_client_read(esp_http_client_handle_t client, char* buffer, int len) {
   if (!client || !buffer || len <= 0) return -1;
   if (client->stream_body.empty()) {
@@ -290,11 +355,10 @@ inline int esp_http_client_read(esp_http_client_handle_t client, char* buffer, i
   const size_t chunk = std::min(static_cast<size_t>(len), client->stream_body.size());
   std::memcpy(buffer, client->stream_body.data(), chunk);
   // Front pop: cheap enough at simulator scale (READ_CHUNK-sized pulls), and it
-  // keeps the FIFO's head where writeCb appends, so no wrap-around bookkeeping.
+  // keeps the FIFO's head where the transfer appends, so no wrap-around bookkeeping.
   client->stream_body.erase(client->stream_body.begin(), client->stream_body.begin() + chunk);
   return static_cast<int>(chunk);
 }
-#endif
 
 inline bool esp_http_client_is_complete_data_received(esp_http_client_handle_t client) {
   if (!client) return false;

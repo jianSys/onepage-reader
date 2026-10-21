@@ -298,6 +298,9 @@ if(EMSCRIPTEN)
     set(SIMULATOR_SD_DEMO ${CMAKE_CURRENT_SOURCE_DIR}/sd_root_demo)
     target_link_options(crosspoint_simulator PRIVATE
         -sPTHREAD_POOL_SIZE=6
+        # emscripten_fetch library for the WASM esp_http_client backend (see
+        # shims/esp_http_client.h); synchronous mode runs on worker threads.
+        -sFETCH=1
         -sALLOW_MEMORY_GROWTH=1
         -sINITIAL_MEMORY=64MB
         -sMAXIMUM_MEMORY=512MB
