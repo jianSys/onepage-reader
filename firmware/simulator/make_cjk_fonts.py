@@ -14,7 +14,9 @@ Defaults on macOS:
   Songti SC Regular   -> .fonts/SongtiSC/        (selectable reader font)
 
 Output goes to simulator/sd_root/.fonts/<family>/, which is git-ignored: the
-converted packs are host-font derivatives and must not be committed.
+converted packs are host-font derivatives and must not be committed. (The browser
+build ships its own Chinese pack instead — an OFL-licensed LXGW WenKai file under
+web/public/simulator/fonts/, fetched into MEMFS at startup.)
 
 Requires: python3 -m pip install freetype-py fonttools
 """

@@ -73,3 +73,18 @@ same fixture directory are tiny derivatives generated from ABeeZee solely to
 exercise real fallback and CJK-codepoint coverage. Their font names are
 obfuscated so the Reserved Font Name is not used; they remain under the same
 SIL Open Font License 1.1.
+
+## LXGW WenKai pack for the embedded simulator
+
+[`public/simulator/fonts/LXGWWenKai-Regular_12.cpfont`](public/simulator/fonts/LXGWWenKai-Regular_12.cpfont)
+is a 12 pt e-ink glyph pack the WebAssembly simulator loads into its virtual SD
+card so Chinese UI labels and Chinese book text have glyphs at all. It is derived
+from LXGW WenKai / 霞鹜文楷, copyright The LXGW WenKai Project Authors
+(https://github.com/lxgw/LxgwWenKai), licensed under the SIL Open Font License 1.1;
+the license text and the attribution note shipped with the file are at
+[`public/simulator/fonts/OFL.txt`](public/simulator/fonts/OFL.txt) and
+[`public/simulator/fonts/LICENSE-LXGW.txt`](public/simulator/fonts/LICENSE-LXGW.txt).
+
+Host-converted packs (e.g. from a machine's own Hiragino Sans GB or Songti SC) are
+**not** redistributable and are never committed — see
+`firmware/simulator/make_cjk_fonts.py`, which writes them to a git-ignored directory.

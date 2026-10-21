@@ -13,6 +13,7 @@
 #include <CrossPointSettings.h>
 #include <I18n.h>
 
+#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -27,15 +28,20 @@ int main(int argc, char** argv) {
   g_simulator_sd_root = "/sd";
 
   // Startup UI language follows the browser: index.html maps navigator.language to a
-  // "--lang <CODE>" arg (CODE = "ZH_CN" / "EN"). Seed SETTINGS.language BEFORE the
-  // firmware task runs. firmware setup() calls loadFromFile() then
+  // "--lang <CODE>" arg (CODE = "EN" / "ZH_HANS" / "ZH_HANT", the codes of the generated
+  // i18n table). Seed SETTINGS.language BEFORE the firmware task runs. firmware setup()
+  // calls loadFromFile() then
   // I18N.setLanguage(SETTINGS.language); loadFromFile() leaves SETTINGS.language
   // untouched when /sd/.crosspoint/settings.json is absent (the fresh-MEMFS demo case),
   // so this seed is what the home screen renders in. A persisted settings.json (e.g.
   // future IDBFS) would still override it — user choice > browser default.
   for (int i = 1; i + 1 < argc; i++) {
     if (std::strcmp(argv[i], "--lang") == 0) {
-      CrossPointSettings::getInstance().language = static_cast<uint8_t>(I18n::languageFromCode(argv[i + 1]));
+      const Language lang = I18n::languageFromCode(argv[i + 1]);
+      CrossPointSettings::getInstance().language = static_cast<uint8_t>(lang);
+      // An unknown code lands on EN without complaining, which is how a stale
+      // "?lang=ZH_CN" link came to look like "Chinese is broken". Log the resolution.
+      std::printf("[sim] startup language: %s -> %s\n", argv[i + 1], I18N.getLanguageName(lang));
       break;
     }
   }

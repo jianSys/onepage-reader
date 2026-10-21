@@ -1,0 +1,28 @@
+LXGW WenKai / 霞鹜文楷 — Regular, converted to a 12pt CPFONT bitmap pack
+
+What this file is
+    LXGWWenKai-Regular_12.cpfont is a 2-bit e-ink glyph pack for the embedded
+    simulator's virtual SD card, produced from the LXGW WenKai (霞鹜文楷) face by
+    firmware/lib/EpdFont/scripts/fontconvert_sdcard.py. The CPFONT container carries
+    no name table, so the attribution lives next to it instead of inside it.
+
+License
+    SIL Open Font License 1.1 — the license text is shipped alongside this file as
+    OFL.txt. The web simulator serves the pack so the embedded firmware can render
+    Chinese UI labels and Chinese book text; the same face ships preinstalled on
+    OnePage device SD cards.
+
+Upstream
+    https://github.com/lxgw/LxgwWenKai
+
+OFL conditions that apply to redistribution
+    - The font may be bundled and redistributed freely, including for money.
+    - The copyright notice and this license must accompany any distribution of the
+      font or of substantial portions of it.
+    - Modified versions may not be shipped under the LXGW WenKai name.
+    - The font may be embedded in documents and rendered by applications without
+      the document or application falling under the OFL.
+
+The OFL terms above are the reason this pack may sit in the repository at all.
+See also web/README.md and THIRD_PARTY_NOTICES.md, which credit the same face for
+the logo glyph outlines.

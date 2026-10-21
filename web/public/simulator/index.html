@@ -88,7 +88,7 @@
         </div>
         <button class="hit chin-confirm" data-btn="1" aria-label="Confirm"></button>
       </div>
-      <div class="hint" id="hint">Click the keys, or use arrow keys · Enter selects · Backspace back · Esc power</div>
+      <div class="hint" id="hint">Click the keys, or use arrow keys · Enter selects · Backspace back · hold Esc to sleep, tap to wake</div>
     </div>
 
     <script>
@@ -112,8 +112,8 @@
       const boot = document.getElementById("boot");
       function fail(msg) { boot.classList.remove("hidden"); const d = document.createElement("div"); d.className = "err"; d.textContent = msg; boot.replaceChildren(d); }
 
-      const HINT = { en: "Arrow keys move · Enter selects · Backspace back · Esc power",
-                     zh: "方向键移动 · Enter 选择 · Backspace 返回 · Esc 电源" };
+      const HINT = { en: "Arrow keys move · Enter selects · Backspace back · Hold Esc to sleep, tap it to wake",
+                     zh: "方向键移动 · Enter 选择 · Backspace 返回 · 长按 Esc 入睡，再按一下唤醒" };
       function uiLang() { let s = ""; try { s = (localStorage.getItem("op-lang") || "").toLowerCase(); } catch {}
         if (s.startsWith("zh")) return "zh"; if (s.startsWith("en")) return "en";
         return (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en"; }
@@ -153,18 +153,49 @@
         el.addEventListener("pointercancel", up);
       }
 
-      function startupLanguage() { const o = new URLSearchParams(location.search).get("lang"); if (o) return o;
-        return uiLang() === "zh" ? "ZH_CN" : "EN"; }
+      // The firmware understands the codes of the generated i18n table (EN / ZH_HANS /
+      // ZH_HANT). Older links pass ?lang=ZH_CN, which used to silently fall back to EN,
+      // so normalize here rather than forwarding whatever came in.
+      function normalizeLang(code) { const c = String(code || "").toUpperCase().replace(/-/g, "_");
+        if (c === "ZH_HANT" || c === "ZH_TW" || c === "ZH_HK") return "ZH_HANT";
+        if (c === "EN") return "EN";
+        return c.startsWith("ZH") ? "ZH_HANS" : "EN"; }
+      function startupLanguage() { const o = new URLSearchParams(location.search).get("lang"); if (o) return normalizeLang(o);
+        return uiLang() === "zh" ? "ZH_HANS" : "EN"; }
       function recentBooksFor(lang) {
-        const book = lang === "ZH_CN"
+        const book = lang !== "EN"
           ? { path: "/狂人日记.epub", title: "狂人日记", author: "鲁迅", coverBmpPath: "" }
           : { path: "/alice-in-wonderland.epub", title: "Alice's Adventures in Wonderland", author: "Lewis Carroll", coverBmpPath: "" };
         return JSON.stringify({ books: [book] });
       }
 
+      // Chinese glyphs only exist once a .cpfont is on the card. The preloaded demo SD
+      // image deliberately stays tiny, so stage the pack into MEMFS before main() runs —
+      // setupSdFonts() looks for exactly this path (CjkUiFontSystem candidates).
+      // English visitors skip the 3.4 MB download entirely.
+      const CJK_FONT_URL = "fonts/LXGWWenKai-Regular_12.cpfont";
+      const CJK_FONT_PATH = "/sd/.fonts/LXGWWenKai-Regular/LXGWWenKai-Regular_12.cpfont";
+      // The CJK fallback only covers the UI fonts; book text renders with the reader
+      // font, which defaults to Noto Serif and has no Chinese glyphs. Point the reader
+      // at the same 12pt LXGW pack (fontSize 0 = 12pt) so one download covers UI and
+      // body text.
+      function seedSettings(lang) {
+        return lang === "EN" ? null : JSON.stringify({ sdFontFamilyName: "LXGWWenKai-Regular", fontSize: 0 });
+      }
+      function stageCjkFont(M, V) {
+        const dep = "cjk-font";
+        M.addRunDependency(dep);
+        fetch(CJK_FONT_URL + "?v=" + V)
+          .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+          .then((b) => { M.FS.mkdirTree("/sd/.fonts/LXGWWenKai-Regular");
+                         M.FS.writeFile(CJK_FONT_PATH, new Uint8Array(b)); })
+          .catch((e) => console.warn("[sim] CJK font unavailable, Chinese will show replacement glyphs:", e))
+          .finally(() => M.removeRunDependency(dep));
+      }
+
       function start() {
         const lang = startupLanguage();
-        const V = "20260722-zh4"; // cache-bust: bump on each firmware rebuild
+        const V = "20261021-power-sleep"; // cache-bust: bump on each firmware rebuild
         const s = document.createElement("script");
         s.src = "crosspoint_simulator_wasm.js?v=" + V;
         s.onerror = () => fail("Failed to load simulator wasm.");
@@ -172,7 +203,9 @@
           createSimulator({
             arguments: ["--lang", lang],
             locateFile: (path) => path + "?v=" + V,
-            preRun: [(M) => { try { M.FS.mkdirTree("/sd/.crosspoint"); M.FS.writeFile("/sd/.crosspoint/recent.json", new TextEncoder().encode(recentBooksFor(lang))); } catch (e) { console.warn("[sim] seed recent failed", e); } }],
+            preRun: [(M) => { try { M.FS.mkdirTree("/sd/.crosspoint"); M.FS.writeFile("/sd/.crosspoint/recent.json", new TextEncoder().encode(recentBooksFor(lang)));
+                           const seed = seedSettings(lang); if (seed) M.FS.writeFile("/sd/.crosspoint/settings.json", new TextEncoder().encode(seed)); } catch (e) { console.warn("[sim] seed /sd failed", e); }
+                           if (lang !== "EN") stageCjkFont(M, V); }],
             print: (t) => console.log("[sim]", t), printErr: (t) => console.warn("[sim]", t),
           }).then((mod) => {
             Module = mod;

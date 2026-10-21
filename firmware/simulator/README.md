@@ -115,7 +115,7 @@ Keyboard mapping (matches `MappedInputManager::Button::*`):
 | Enter     | BTN_CONFIRM    | Select / next                |
 | ← / →     | BTN_LEFT/RIGHT | Page back / forward (reader) |
 | ↑ / ↓     | BTN_UP/DOWN    | Cursor / scroll              |
-| Esc       | BTN_POWER      | Power button (exits sim)     |
+| Esc       | BTN_POWER      | Power button (hold to sleep; see below) |
 | F1        | —              | Toggle simulator settings overlay |
 
 To capture what the window shows (useful when the host won't grant screen
@@ -210,8 +210,9 @@ Save as `simulator/sd_root/.crosspoint/state.json` before launching.
 
 The builtin UI fonts have no CJK glyphs, so Chinese labels and Chinese book text
 need a `.cpfont` pack on the virtual SD card — exactly like a real card, where
-the LXGW WenKai pack ships preinstalled. That pack cannot be redistributed here,
-so convert a CJK face that is already on your machine:
+the LXGW WenKai pack ships preinstalled. Apple's own faces are licensed, so a
+converted pack stays local (git-ignored); convert whichever CJK face is already
+on your machine:
 
 ```sh
 python3 -m pip install freetype-py fonttools    # one-time
@@ -241,6 +242,46 @@ A `settings.json` with the Chinese UI + Songti reader preset:
 ```
 
 `language` is a code string (`EN` / `ZH_HANS` / `ZH_HANT`), not an index.
+
+### The browser build
+
+`sd_root_demo/` (preloaded into MEMFS as `/sd` for the WASM build) deliberately
+carries no fonts, so the shell in `web/public/simulator/index.html` does two things
+before the firmware starts:
+
+1. fetches the SIL OFL **LXGW WenKai 12 pt** pack it ships at
+   `web/public/simulator/fonts/` and writes it to
+   `/sd/.fonts/LXGWWenKai-Regular/LXGWWenKai-Regular_12.cpfont` — the first
+   `CjkUiFontSystem` candidate, so UI labels get their glyphs;
+2. seeds `/sd/.crosspoint/settings.json` with `{"sdFontFamilyName":
+   "LXGWWenKai-Regular", "fontSize": 0}` so book text renders from the same pack
+   too (the UI fallback does not cover the reader font).
+
+One 3.4 MB pack therefore covers UI + body text, and it is served as a static
+asset rather than baked into `.data` — rebuilding the firmware then never forces
+a re-download of the font. English visitors skip both steps. Bump the shell's `V`
+cache-bust string whenever the artifacts are replaced.
+
+### Sleep and the power button
+
+Holding `Esc` past `SETTINGS.getPowerButtonDuration()` (400 ms, or 10 ms when the
+short-press action is set to Sleep) runs the same `enterDeepSleep()` the device runs;
+the inactivity timeout and the lock-screen idle path share it. What "sleep" does then
+differs per build, since neither host can cut power:
+
+- **native** — the process exits (`HalPowerManager::startDeepSleep` → `std::exit(0)`):
+  the window closing is the power-down, and restarting is the wake-up.
+- **WASM** — the firmware thread parks on `simulator::waitForPowerWakeup()` and the page
+  keeps painting the sleep frame. The next `Esc` tap resumes: `enterDeepSleep()` returns
+  into its wake tail, which re-arms the inactivity timer and `deepSleepInProgress` and
+  replaces `SleepActivity` (it has no `loop()` of its own), routing to the reader when
+  that is where it slept and to Home otherwise. Without that tail the stale timer would
+  put us straight back to sleep on the next pass.
+
+Parked means parked: the `[MEM]` heartbeat stops until something wakes the thread, so a
+frozen-looking page with no key response is a bug, not a slow refresh. The wake gesture
+is press-then-release after having let go of the press that caused the sleep, so holding
+the button through the sleep transition cannot immediately undo it.
 
 ## What works in first version
 

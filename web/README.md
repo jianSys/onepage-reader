@@ -74,10 +74,24 @@ Pushed to `main` → built and published to **GitHub Pages** by the workflow in 
 
 It needs cross-origin isolation (SharedArrayBuffer, for the threaded WASM). That's provided client-side by `coi-serviceworker.js`, which only works in a secure context — so it runs on GitHub Pages (HTTPS) and on `http://localhost`, but **not** over a plain-HTTP LAN address. The first visit reloads once to activate the service worker.
 
+The simulator only boots when clicked (the poster is a placeholder), so its weight lands on the visitor who asks for it: about 4 MB of wasm plus, on Chinese pages only, the 3.4 MB `public/simulator/fonts/LXGWWenKai-Regular_12.cpfont` glyph pack the firmware needs for any Chinese text at all. Bump the `V` cache-bust string in `public/simulator/index.html` whenever the artifacts are replaced.
+
+To rebuild the artifacts from the firmware sources (needs emsdk; install it inside the
+repo's ignored `firmware/.cache` rather than system-wide, so no shared formulae or
+runtime packages get dragged along):
+
+```sh
+EMSDK=../firmware/.cache/emsdk-main ../firmware/simulator/build_wasm.sh
+cp ../firmware/simulator/build_wasm/crosspoint_simulator_wasm.{js,wasm,data} public/simulator/
+```
+
+`public/simulator/index.html` is hand-maintained and stays put; only the three generated files are replaced.
+
 ## Credits
 
 - Reader firmware in the simulator: **CrossPoint** (MIT).
 - Logo glyph outline: **LXGW WenKai / 霞鹜文楷** (SIL OFL 1.1).
+- Chinese glyphs in the simulator: the same face, shipped as a 12 pt CPFONT pack — see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
 - Font-builder dependencies and converter references: see [Third-Party Notices](THIRD_PARTY_NOTICES.md) and the [shipped FreeType WASM license assets](public/licenses/freetype-wasm/).
 
 ---
