@@ -5,7 +5,28 @@
   "builds": [
     {
       "chipFamily": "ESP32-C61",
+      "label": "Latest (recommended)",
       "parts": [{ "path": "crossmux-onepage.bin", "offset": 0 }]
+    },
+    {
+      "chipFamily": "ESP32-C61",
+      "label": "v0.1.1-dev",
+      "parts": [{ "path": "onepage-firmware-v0.1.1-dev.bin", "offset": 0 }]
+    },
+    {
+      "chipFamily": "ESP32-C61",
+      "label": "v0.1.1",
+      "parts": [{ "path": "onepage-firmware-v0.1.1.bin", "offset": 0 }]
+    },
+    {
+      "chipFamily": "ESP32-C61",
+      "label": "dev",
+      "parts": [{ "path": "onepage-firmware-dev.bin", "offset": 0 }]
+    },
+    {
+      "chipFamily": "ESP32-C61",
+      "label": "v0.1.0",
+      "parts": [{ "path": "onepage-firmware-v0.1.0.bin", "offset": 0 }]
     }
   ]
 }

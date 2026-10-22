@@ -42,6 +42,16 @@ const t = {
       <p class="mt-2 max-w-[56ch] text-sm/6 text-ink/65">{f.webLede}</p>
 
       <div class="mt-6 flex flex-wrap items-center gap-3">
+        <label id="fwVersionWrap" class="flex items-center gap-2">
+          <span class="font-mono text-xs tracking-wider text-ink/60 uppercase">{f.versionLabel}</span>
+          <select
+            id="fwVersion"
+            class="rounded-lg border border-ink/20 bg-surface px-3 py-1.5 font-mono text-sm text-ink transition hover:border-accent-600 focus:border-accent-600 focus:outline-none disabled:opacity-50"
+          ></select>
+        </label>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center gap-3">
         <button
           id="fwFlash"
           type="button"
@@ -115,6 +125,7 @@ const t = {
     const T = JSON.parse(section.getAttribute('data-fw') || '{}');
     const $ = (id: string) => document.getElementById(id);
     const btnStub = $('fwFlash') as HTMLButtonElement | null;
+    const versionSel = $('fwVersion') as HTMLSelectElement | null;
     const wrap = $('fwProgressWrap');
     const bar = $('fwProgressBar');
     const text = $('fwProgressText');
@@ -201,12 +212,47 @@ const t = {
       if (monPre) monPre.textContent = '';
     });
 
+    // Cache the manifest so the version dropdown and the flash read one source.
+    let manifestCache: any = null;
+    async function loadManifest(): Promise<any> {
+      if (manifestCache) return manifestCache;
+      const manifestUrl = new URL(T.manifestUrl, location.href);
+      manifestCache = await (await fetch(manifestUrl)).json();
+      return manifestCache;
+    }
+
+    // Populate the version <select> from manifest.builds[].label (falls back to
+    // chipFamily / bin filename / index). Disabled when there is nothing to choose.
+    async function populateVersions() {
+      if (!versionSel) return;
+      try {
+        const manifest = await loadManifest();
+        const builds = manifest.builds || [];
+        versionSel.innerHTML = '';
+        builds.forEach((b: any, i: number) => {
+          const opt = document.createElement('option');
+          opt.value = String(i);
+          const firstPath = b.parts && b.parts[0] ? String(b.parts[0].path).split('/').pop() : '';
+          opt.textContent = b.label || b.chipFamily || firstPath || 'Build ' + (i + 1);
+          versionSel.appendChild(opt);
+        });
+        if (builds.length <= 1) versionSel.disabled = true;
+      } catch (err) {
+        // No manifest reachable: tuck the control away; resolveBin surfaces the
+        // real error at flash time.
+        const wrapEl = document.getElementById('fwVersionWrap');
+        if (wrapEl) wrapEl.classList.add('hidden');
+      }
+    }
+
     async function resolveBin(): Promise<{ url: string; offset: number }> {
       // Manifest is same-origin; its part path is relative to the manifest URL.
       const manifestUrl = new URL(T.manifestUrl, location.href);
-      appendLog(`Loading manifest: ${manifestUrl.href}`);
-      const manifest = await (await fetch(manifestUrl)).json();
-      const part = manifest.builds[0].parts[0];
+      const manifest = await loadManifest();
+      const idx = versionSel ? Number(versionSel.value) || 0 : 0;
+      const build = manifest.builds[idx] || manifest.builds[0];
+      appendLog(`Selected firmware: ${build.label || 'build ' + (idx + 1)}`);
+      const part = build.parts[0];
       const url = new URL(part.path, manifestUrl).href;
       appendLog(`Firmware image: ${url} @ 0x${Number(part.offset).toString(16)}`);
       return { url, offset: part.offset };
@@ -264,5 +310,6 @@ const t = {
     }
 
     btnStub?.addEventListener('click', () => run());
+    populateVersions();
   }
 </script>

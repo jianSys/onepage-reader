@@ -23,6 +23,7 @@ type FirmwareContent = {
   // Browser (Web Serial) flow
   webTitle: string;
   webLede: string;
+  versionLabel: string;
   connectBtn: string;
   browserNote: string;
   unsupported: string;
@@ -496,6 +497,7 @@ export const ui: Record<Lang, Content> = {
       lede: 'OnePage runs my port of CrossPoint. Plug the reader in over USB and flash the latest build straight from this page — no tools to install.',
       webTitle: 'Flash from the browser',
       webLede: 'Plug the reader in over USB, then connect and flash. Works in Chrome, Edge, and other Chromium browsers that support Web Serial.',
+      versionLabel: 'Firmware version',
       connectBtn: 'Connect & flash',
       browserNote: 'Your browser talks to the chip directly — nothing is uploaded to a server.',
       unsupported: 'This browser can’t flash over USB (no Web Serial). Use Chrome or Edge on desktop.',
@@ -912,6 +914,7 @@ export const ui: Record<Lang, Content> = {
       lede: 'OnePage 跑的是我移植的 CrossPoint。用 USB 接上阅读器，直接在这个页面烧最新固件 —— 不用装任何工具。',
       webTitle: '浏览器直接烧录',
       webLede: '用 USB 把阅读器接上，然后点连接并烧录。支持 Web Serial 的浏览器（Chrome、Edge 等 Chromium 内核）可用。',
+      versionLabel: '固件版本',
       connectBtn: '连接并烧录',
       browserNote: '浏览器直接和芯片通信 —— 不会上传到任何服务器。',
       unsupported: '当前浏览器不支持 USB 烧录（无 Web Serial）。请在桌面版 Chrome / Edge 使用。',
