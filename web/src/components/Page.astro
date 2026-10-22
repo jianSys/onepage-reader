@@ -1,6 +1,5 @@
 ---
 import type { Lang } from '../i18n/ui';
-import { ui, localizedPath } from '../i18n/ui';
 import Nav from './Nav.astro';
 import Hero from './Hero.astro';
 import Materials from './Materials.astro';
@@ -11,10 +10,6 @@ interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
-const t = ui[lang].nav;
-const systemPath = localizedPath('/system', lang);
-const toolsPath = localizedPath('/tools', lang);
-const firmwarePath = localizedPath('/firmware', lang);
 ---
 
 <Nav lang={lang} />
@@ -24,23 +19,5 @@ const firmwarePath = localizedPath('/firmware', lang);
   <Materials lang={lang} />
 
   <Gallery lang={lang} />
-
-  <!-- Where to next: the system overview, the browser tools, and the flasher -->
-  <section id="next" class="scroll-mt-20 border-t border-ink/12 bg-surface py-16 sm:py-20">
-    <div class="mx-auto grid max-w-5xl gap-4 px-6 sm:grid-cols-3">
-      <a href={systemPath} class="group rounded-xl border border-ink/12 bg-paper p-6 no-underline transition hover:border-accent-600">
-        <p class="font-mono text-xs tracking-wider text-accent-600 uppercase">{t.system}</p>
-        <p class="mt-3 font-serif text-lg font-medium text-ink">{lang === 'zh' ? '系统是怎么搭起来的 →' : 'How the system fits together →'}</p>
-      </a>
-      <a href={toolsPath} class="group rounded-xl border border-ink/12 bg-paper p-6 no-underline transition hover:border-accent-600">
-        <p class="font-mono text-xs tracking-wider text-accent-600 uppercase">{t.tools}</p>
-        <p class="mt-3 font-serif text-lg font-medium text-ink">{lang === 'zh' ? '浏览器本地工具台 →' : 'Browser tools, run locally →'}</p>
-      </a>
-      <a href={firmwarePath} class="group rounded-xl border border-ink/12 bg-paper p-6 no-underline transition hover:border-accent-600">
-        <p class="font-mono text-xs tracking-wider text-accent-600 uppercase">{t.firmware}</p>
-        <p class="mt-3 font-serif text-lg font-medium text-ink">{lang === 'zh' ? '把固件烧进设备 →' : 'Flash OnePage over USB →'}</p>
-      </a>
-    </div>
-  </section>
 </main>
 <Footer lang={lang} />

@@ -7,9 +7,10 @@ interface Props {
 }
 const { lang } = Astro.props;
 const t = ui[lang].hero;
-const navLabel = ui[lang].nav.system;
-const logPath = localizedPath('/log', lang);
+const systemLabel = ui[lang].nav.system;
+const toolsLabel = ui[lang].nav.tools;
 const systemPath = localizedPath('/system', lang);
+const toolsPath = localizedPath('/tools', lang);
 ---
 
 <section class="relative min-h-[calc(100dvh-3.5rem)] overflow-hidden">
@@ -30,8 +31,8 @@ const systemPath = localizedPath('/system', lang);
 
   <!-- Quiet, centered actions -->
   <div class="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 font-mono text-sm">
-    <a href={logPath} class="text-ink/85 no-underline underline-offset-4 hover:underline">{t.ctaPrimary} →</a>
-    <a href={systemPath} class="text-ink/55 no-underline underline-offset-4 hover:text-ink hover:underline">{navLabel} →</a>
+    <a href={systemPath} class="text-ink/85 no-underline underline-offset-4 hover:underline">{systemLabel} →</a>
+    <a href={toolsPath} class="text-ink/55 no-underline underline-offset-4 hover:text-ink hover:underline">{toolsLabel} →</a>
   </div>
 
   <div class="pb-24 sm:pb-32"></div>

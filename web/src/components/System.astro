@@ -1,6 +1,6 @@
 ---
 import type { Lang } from '../i18n/ui';
-import { ui, localizedPath } from '../i18n/ui';
+import { ui } from '../i18n/ui';
 import Logbook from './Logbook.astro';
 import Capabilities from './Capabilities.astro';
 import Specs from './Specs.astro';
@@ -11,7 +11,6 @@ interface Props {
 const { lang } = Astro.props;
 const s = ui[lang].system;
 const fe = ui[lang].features;
-const logPath = localizedPath('/log', lang);
 ---
 
 <section id="system" class="scroll-mt-20 border-t border-ink/12 bg-surface py-20 sm:py-28">
@@ -32,10 +31,6 @@ const logPath = localizedPath('/log', lang);
         </li>
       ))}
     </ol>
-
-    <p class="mt-8 font-mono text-sm">
-      <a href={logPath} class="text-ink/85 no-underline underline-offset-4 hover:underline">{s.logLink}</a>
-    </p>
   </div>
 </section>
 

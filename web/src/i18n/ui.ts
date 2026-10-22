@@ -14,8 +14,6 @@ type Feature = {
   caption: string;
 };
 
-type LogEntry = { when: string; title: string; body: string; tag: string };
-
 type FirmwareContent = {
   eyebrow: string;
   title: string;
@@ -184,21 +182,16 @@ type Content = {
   nav: {
     home: string;
     system: string;
-    features: string;
-    notes: string;
     firmware: string;
     fontTool: string;
     cards: string;
     tools: string;
-    github: string;
   };
   hero: {
     eyebrow: string;
     title: string;
     lede: string;
     caption: string;
-    ctaPrimary: string;
-    ctaSecondary: string;
   };
   features: {
     reading: Feature;
@@ -213,14 +206,6 @@ type Content = {
     items: { label: string; body: string }[];
     simLaunch: string;
     simNote: string;
-  };
-  log: {
-    eyebrow: string;
-    title: string;
-    lede: string;
-    entries: LogEntry[];
-    nextLabel: string;
-    next: { items: string; status: string }[];
   };
   about: {
     eyebrow: string;
@@ -249,7 +234,6 @@ type Content = {
     lede: string;
     archTitle: string;
     layers: { name: string; body: string }[];
-    logLink: string;
   };
   fonts: FontsContent;
   firmware: FirmwareContent;
@@ -262,18 +246,15 @@ export const ui: Record<Lang, Content> = {
     nav: {
       home: 'Home',
       system: 'The system',
-      features: 'The build',
-      notes: 'Log',
       firmware: 'Firmware',
       fontTool: 'Font Tool',
       cards: 'Card Studio',
       tools: 'Tools',
-      github: 'GitHub',
     },
     system: {
       eyebrow: 'The system',
       title: 'How the OnePage firmware fits together.',
-      lede: 'A close look at the firmware this project actually runs — the reader engine on the ESP32-C61, taken one layer at a time.',
+      lede: 'A close look at the firmware this project actually runs — the reader engine on the ESP32-C61, taken apart one layer at a time, from the bare e-ink panel up to the web server that feeds it books.',
       archTitle: 'Firmware stack',
       layers: [
         { name: 'Platform & HAL', body: 'ESP32-C61 with 16 MB flash, 2 MB PSRAM, a 4.26″ e-ink panel and microSD over SPI. A thin hardware-abstraction layer (lib/hal) plus the onepage board target let one codebase build to the device, the desktop SDL simulator, and the browser WASM simulator.' },
@@ -282,16 +263,15 @@ export const ui: Record<Lang, Content> = {
         { name: 'Font system', body: 'EpdFont renders SD-card .cpfont packs — built on this very site — with Simplified/Traditional Chinese fallback and an in-device font installer.' },
         { name: 'Data & state', body: 'To stay inside a few hundred KB of RAM it caches aggressively to the SD card under .crosspoint — per-book progress, cover, spine and chapter layouts — plus settings, resume state and recent books. Reading time, the word book, clippings and bookmarks are all tracked on-device.' },
         { name: 'Connectivity', body: 'A built-in web server serves file transfer, a settings UI/API, WebSocket uploads, WebDAV, an OPDS browser and OTA checks, over an AP hotspot (192.168.4.1) or your own Wi-Fi. A BLE page-turner and remappable buttons round it out.' },
+        { name: 'Build & toolchain', body: 'One firmware tree, three ways out: PlatformIO / ESP-IDF flashes the device, a CMake + SDL2 target runs it as a native desktop window, and an Emscripten target compiles the very same code into the WASM simulator you can try on this page. The companion browser tools — the .cpfont builder and Card Studio — emit files straight onto the SD card.' },
+        { name: 'Open base', body: 'The reader core is a port of CrossPoint, an MIT-licensed e-ink reader, kept readable and small for this single-page 4.26″ form factor. The board files and onepage target, the mechanical and electronics sources, and this site all live in one open repository.' },
       ],
-      logLink: 'Read the build log →',
     },
     hero: {
-      eyebrow: 'Build log · 4.26-inch e-ink reader',
+      eyebrow: 'A 4.26-inch e-ink reader · open firmware',
       title: 'OnePage — a little e-reader I’m building for myself.',
-      lede: 'An open notebook for a 4.26″ e-ink reader on an ESP32-C61. Reflowable text, careful CJK typography, a phone-friendly setup. No roadmap promises — just what works so far, written down as it does.',
+      lede: 'An open 4.26″ e-ink reader on an ESP32-C61. Reflowable text, careful CJK typography, a phone-friendly setup — and a firmware you can read, rebuild and flash yourself.',
       caption: 'OnePage · 壹頁 — seen edge-on. It’s genuinely thin.',
-      ctaPrimary: 'Read the log',
-      ctaSecondary: 'GitHub',
     },
     features: {
       reading: {
@@ -350,44 +330,6 @@ export const ui: Record<Lang, Content> = {
       ],
       simLaunch: 'Try it live',
       simNote: 'The real firmware, running in your browser — my port of CrossPoint (open-source), the same reader the device runs.',
-    },
-    log: {
-      eyebrow: 'Build log',
-      title: 'What’s happened so far.',
-      lede: 'Rough notes from bring-up. Newest first. Dates are approximate — this is a side project, not a release schedule.',
-      entries: [
-        {
-          when: 'Now',
-          title: 'Porting CrossPoint',
-          body: 'Rather than write a reader from scratch, I’m porting CrossPoint — open-source, and already solid at TXT/EPUB reflow and CJK typography. Much faster path to something I can actually read on.',
-          tag: 'In progress',
-        },
-        {
-          when: 'Earlier',
-          title: 'The mic records now',
-          body: 'That PDM mic that “wouldn’t clock right” wasn’t a silicon erratum after all — it was an IDF 5.5.x driver bug in the C61’s PDM-RX clock path, and 6.1-dev fixed it. Long-press to record, software CIC down to 16 kHz, WAV to the SD card. Still a side feature, not part of reading.',
-          tag: 'Done',
-        },
-        {
-          when: 'Earlier',
-          title: 'Web setup decided',
-          body: 'With seven keys and no touch, typing passwords on-screen is awful. Settled on a self-hosted web page over hotspot / LAN as the real way to configure and load books.',
-          tag: 'Decided',
-        },
-        {
-          when: 'Bring-up',
-          title: 'Panel drawing, screen-corruption fixed',
-          body: 'Got the 4.26″ SSD1677 panel refreshing, then tracked down a tearing bug to an SPI per-transfer size limit on the C61. One bad assumption, a lot of garbled screens.',
-          tag: 'Done',
-        },
-      ],
-      nextLabel: 'On the list, roughly in order',
-      next: [
-        { items: 'TXT and EPUB', status: 'Stage 1' },
-        { items: 'HTML & Markdown (same reflow engine)', status: 'Stage 2' },
-        { items: 'CBZ comics, MOBI / AZW3 (no DRM)', status: 'Stage 3' },
-        { items: 'PDF, read-only (crop + columns) — tight on memory', status: 'Maybe' },
-      ],
     },
     about: {
       eyebrow: 'About this',
@@ -696,18 +638,15 @@ export const ui: Record<Lang, Content> = {
     nav: {
       home: '首页',
       system: '系统',
-      features: '在做什么',
-      notes: '手记',
       firmware: '固件',
       fontTool: '字体工具',
       cards: '卡片工坊',
       tools: '工具台',
-      github: 'GitHub',
     },
     system: {
       eyebrow: '系统',
       title: '壹頁固件是怎么搭起来的。',
-      lede: '走近这个项目实际运行的固件 —— 跑在 ESP32-C61 上的那颗阅读引擎,一层层拆开看。',
+      lede: '走近这个项目实际运行的固件 —— 跑在 ESP32-C61 上的那颗阅读引擎，从最底层的屏幕一点点往上拆，直到那台往它喂书的 Web 服务。',
       archTitle: '固件软件栈',
       layers: [
         { name: '平台与硬件抽象', body: 'ESP32-C61,16MB Flash、2MB PSRAM、4.26″ 墨水屏、microSD 走 SPI。一层薄薄的硬件抽象(lib/hal)加 onepage 板级目标,让同一套代码既能编译到设备,也能编译到桌面 SDL 模拟器和浏览器 WASM 模拟器。' },
@@ -716,16 +655,15 @@ export const ui: Record<Lang, Content> = {
         { name: '字体系统', body: 'EpdFont 渲染 SD 卡上的 .cpfont 字包(就在本站生成),内置简中/繁中回退,并可在设备端安装字体。' },
         { name: '数据与状态', body: '为把占用压到几百 KB 内存以内,它把数据激进地缓存到 SD 卡的 .crosspoint 目录 —— 每本书的进度、封面、书脊与章节布局,外加设置、恢复状态与最近阅读;阅读时长、生词本、摘录与书签都在设备端记录。' },
         { name: '联网与配套', body: '内置 Web Server 提供文件传输、设置界面/API、WebSocket 上传、WebDAV、OPDS 浏览器与 OTA 检查,可通过 AP 热点(192.168.4.1)或你自己的 Wi-Fi 访问;另有 BLE 翻页器与可重映射按键。' },
+        { name: '构建与工具链', body: '同一份固件树，三条出口：PlatformIO / ESP-IDF 烧录到设备，CMake + SDL2 目标把它跑成桌面窗口，Emscripten 目标把同一套代码编译成本页可以直接试玩的 WASM 模拟器。配套的浏览器工具 —— .cpfont 字体工坊与卡片工坊 —— 生成的文件直接落进 SD 卡。' },
+        { name: '开源根基', body: '阅读内核移植自 MIT 授权的开源墨水屏阅读器 CrossPoint，针对这台 4.26″ 单页形态做了裁剪，保持可读、够小。板级文件与 onepage 目标、结构件与电子件源文件、以及这个网站，都放在同一个开源仓库里。' },
       ],
-      logLink: '查看开发手记 →',
     },
     hero: {
-      eyebrow: '开发手记 · 4.26 英寸墨水屏阅读器',
+      eyebrow: '4.26 英寸墨水屏阅读器 · 开源固件',
       title: '壹頁 —— 给自己折腾的一台小阅读器。',
-      lede: '一台基于 ESP32-C61 的 4.26″ 墨水屏阅读器的公开笔记本。可重排的正文、用心的中文排版、配套手机配置。不画大饼 —— 只记录目前真正跑通的东西。',
+      lede: '一台基于 ESP32-C61 的 4.26″ 墨水屏阅读器，完全开源。可重排的正文、用心的中文排版、配套手机配置 —— 还是一份你能自己阅读、重新编译并烧录的固件。',
       caption: '壹頁 · OnePage —— 侧面看过去，它真的很薄。',
-      ctaPrimary: '看手记',
-      ctaSecondary: 'GitHub',
     },
     features: {
       reading: {
@@ -784,44 +722,6 @@ export const ui: Record<Lang, Content> = {
       ],
       simLaunch: '让它跑起来',
       simNote: '浏览器里跑的就是设备上的固件 —— 我移植的开源 CrossPoint，直接拿来用，没有从头再写一套。',
-    },
-    log: {
-      eyebrow: '开发手记',
-      title: '到目前为止发生了什么。',
-      lede: '点屏阶段的零散笔记，新的在上。日期是大概 —— 这是个副业项目，不是发布计划。',
-      entries: [
-        {
-          when: '现在',
-          title: '移植 CrossPoint',
-          body: '与其从头写一套阅读器，不如直接移植开源的 CrossPoint —— 它的 TXT/EPUB 重排和中文排版都已经很成熟。这样能最快让它变成一台真能读书的机器。',
-          tag: '进行中',
-        },
-        {
-          when: '之前',
-          title: '麦克风能录了',
-          body: '那个「一直时钟不对」的 PDM 麦克风，最后不是硅片 erratum —— 是 IDF 5.5.x 在 C61 PDM-RX 时钟路径上的驱动 bug，换到 6.1-dev 就修好了。长按录音、软件 CIC 抽到 16kHz、存成 WAV。仍是支线功能，不进阅读主线。',
-          tag: '完成',
-        },
-        {
-          when: '之前',
-          title: '定了网页配置',
-          body: '七个键、没触摸，在屏上敲密码太痛苦。最终定下自托管网页，走热点 / 局域网，作为配置和传书的正经入口。',
-          tag: '已定',
-        },
-        {
-          when: '点屏期',
-          title: '屏点亮了，花屏修好了',
-          body: '先让 4.26″ 的 SSD1677 面板刷起来，又把撕裂花屏的 bug 追到 C61 单次 SPI 传输大小的限制上。一个错误假设，换来一堆花屏。',
-          tag: '完成',
-        },
-      ],
-      nextLabel: '待办，大致按顺序',
-      next: [
-        { items: 'TXT 和 EPUB', status: '阶段一' },
-        { items: 'HTML 与 Markdown（同一套重排引擎）', status: '阶段二' },
-        { items: 'CBZ 漫画、MOBI / AZW3（无 DRM）', status: '阶段三' },
-        { items: 'PDF 只读（裁边 + 分栏）—— 内存吃紧', status: '也许' },
-      ],
     },
     about: {
       eyebrow: '关于',
