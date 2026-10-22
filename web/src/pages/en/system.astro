@@ -1,0 +1,20 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Nav from '../../components/Nav.astro';
+import System from '../../components/System.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en';
+---
+
+<Layout
+  lang={lang}
+  title="The system — OnePage · 壹頁"
+  description="The whole OnePage software stack at a glance: the hardware-abstraction layer, the reflow renderer and font engine, TXT/EPUB content, the built-in web server, and the fully open firmware and browser simulator."
+>
+  <Nav lang={lang} />
+  <main>
+    <System lang={lang} />
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

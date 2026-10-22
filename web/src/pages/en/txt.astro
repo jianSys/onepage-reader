@@ -2,33 +2,33 @@
 import Layout from '../../layouts/Layout.astro';
 import Nav from '../../components/Nav.astro';
 import ToolShell from '../../components/ToolShell.astro';
-import CardStudio from '../../components/CardStudio.astro';
+import TxtTool from '../../components/TxtTool.astro';
 import Footer from '../../components/Footer.astro';
 import { ui, localizedPath } from '../../i18n/ui';
 
-const lang = 'zh';
-const c = ui[lang].cards;
-const backLabel = ui[lang].tools.backLabel;
+const lang = 'en';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
 const backHref = localizedPath('/tools', lang);
 ---
 
 <Layout
   lang={lang}
-  title="卡片工坊 — 壹頁 · OnePage"
-  description="在浏览器里为 OnePage 的 AirPage 设计 480×800 墨水屏卡片（一言、天气、状态、待办），实时抖动成真实黑白效果，可下载为即用的 BMP 图片或通过 Wi-Fi 推送到设备。"
+  title="TXT Tidier — OnePage · 壹頁"
+  description="Fix encoding (GBK / Big5 mojibake → UTF-8), strip ad and watermark lines, tidy blank lines, detect chapters and view stats — entirely in your browser. Export a clean UTF-8 TXT to the SD card or push over Wi-Fi."
 >
   <Nav lang={lang} />
   <main>
     <ToolShell
       lang={lang}
       surface="light"
-      eyebrow={c.eyebrow}
-      title={c.title}
-      lede={c.lede}
+      eyebrow={t.items.txt.name}
+      title={t.items.txt.name}
+      lede={t.items.txt.tagline}
       backLabel={backLabel}
       backHref={backHref}
     >
-      <CardStudio lang={lang} />
+      <TxtTool lang={lang} />
     </ToolShell>
   </main>
   <Footer lang={lang} showAbout={false} />

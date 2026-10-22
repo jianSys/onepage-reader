@@ -23,7 +23,7 @@ const ogImage = new URL(`${base}og.png`, siteOrigin).href;
 // logical path, then rebuild per-locale (same approach as Nav's language switch).
 let logical = Astro.url.pathname;
 if (logical.startsWith(base)) logical = '/' + logical.slice(base.length);
-logical = logical.replace(/^\/zh(?=\/|$)/, '') || '/';
+logical = logical.replace(/^\/en(?=\/|$)/, '') || '/';
 const enUrl = new URL(localizedPath(logical, 'en'), siteOrigin).href;
 const zhUrl = new URL(localizedPath(logical, 'zh'), siteOrigin).href;
 ---
@@ -53,7 +53,7 @@ const zhUrl = new URL(localizedPath(logical, 'zh'), siteOrigin).href;
         <link rel="canonical" href={canonical} />
         <link rel="alternate" hreflang="en" href={enUrl} />
         <link rel="alternate" hreflang="zh" href={zhUrl} />
-        <link rel="alternate" hreflang="x-default" href={enUrl} />
+        <link rel="alternate" hreflang="x-default" href={zhUrl} />
       </>
     )}
     <meta property="og:type" content="website" />

@@ -2,33 +2,33 @@
 import Layout from '../../layouts/Layout.astro';
 import Nav from '../../components/Nav.astro';
 import ToolShell from '../../components/ToolShell.astro';
-import WallpaperTool from '../../components/WallpaperTool.astro';
+import CardStudio from '../../components/CardStudio.astro';
 import Footer from '../../components/Footer.astro';
 import { ui, localizedPath } from '../../i18n/ui';
 
-const lang = 'zh';
-const t = ui[lang].tools;
-const backLabel = t.backLabel;
+const lang = 'en';
+const c = ui[lang].cards;
+const backLabel = ui[lang].tools.backLabel;
 const backHref = localizedPath('/tools', lang);
 ---
 
 <Layout
   lang={lang}
-  title="壁纸制作器 — 壹頁 · OnePage"
-  description="做 480×800 墨水屏锁屏壁纸，叠加大时钟或引言 —— 1-bit 抖动或 4 级灰阶，可直接放进 SD 卡或通过 Wi-Fi 推送到设备。全部在你的浏览器里完成。"
+  title="Card Studio — OnePage · 壹頁"
+  description="Design 480×800 e-ink cards (quote, weather, status, to-do) for OnePage's AirPage. Dithered to true black-and-white in your browser, then downloaded as a ready-to-use BMP or pushed over Wi-Fi."
 >
   <Nav lang={lang} />
   <main>
     <ToolShell
       lang={lang}
       surface="light"
-      eyebrow={t.items.wallpaper.name}
-      title={t.items.wallpaper.name}
-      lede={t.items.wallpaper.tagline}
+      eyebrow={c.eyebrow}
+      title={c.title}
+      lede={c.lede}
       backLabel={backLabel}
       backHref={backHref}
     >
-      <WallpaperTool lang={lang} />
+      <CardStudio lang={lang} />
     </ToolShell>
   </main>
   <Footer lang={lang} showAbout={false} />

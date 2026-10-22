@@ -4,7 +4,7 @@ export const languages = {
 } as const;
 
 export type Lang = keyof typeof languages;
-export const defaultLang: Lang = 'en';
+export const defaultLang: Lang = 'zh';
 
 type Feature = {
   eyebrow: string;
@@ -182,6 +182,8 @@ type ToolsContent = {
 
 type Content = {
   nav: {
+    home: string;
+    system: string;
     features: string;
     notes: string;
     firmware: string;
@@ -241,6 +243,14 @@ type Content = {
     dotLabel: string;
     photos: { src: string; alt: string; title: string; sub: string }[];
   };
+  system: {
+    eyebrow: string;
+    title: string;
+    lede: string;
+    archTitle: string;
+    layers: { name: string; body: string }[];
+    logLink: string;
+  };
   fonts: FontsContent;
   firmware: FirmwareContent;
   cards: CardsContent;
@@ -250,6 +260,8 @@ type Content = {
 export const ui: Record<Lang, Content> = {
   en: {
     nav: {
+      home: 'Home',
+      system: 'The system',
       features: 'The build',
       notes: 'Log',
       firmware: 'Firmware',
@@ -257,6 +269,20 @@ export const ui: Record<Lang, Content> = {
       cards: 'Card Studio',
       tools: 'Tools',
       github: 'GitHub',
+    },
+    system: {
+      eyebrow: 'The system',
+      title: 'How OnePage fits together.',
+      lede: 'A small e-ink reader with a surprisingly full software stack. Here is the whole system at a glance — from silicon to the page in your hand.',
+      archTitle: 'Software stack',
+      layers: [
+        { name: 'Hardware & HAL', body: 'ESP32-C61, a 4.26″ e-ink panel, buttons and power all sit behind one thin hardware-abstraction layer — so the same firmware runs on the desktop simulator and in the browser WASM build.' },
+        { name: 'Rendering & fonts', body: 'A custom reflow engine lays out TXT and EPUB at 480×800 with kerning, hyphenation and careful CJK line-breaking. Fonts are SD-card .cpfont packs, generated here on the site.' },
+        { name: 'Content', body: 'TXT and EPUB open instantly via an index sidecar, remember progress per book, and can download an on-device word-lookup dictionary.' },
+        { name: 'Connectivity', body: 'A built-in web server lets your phone push books, fonts and settings over Wi-Fi — no cable. The card studio and tools run entirely in the browser.' },
+        { name: 'Open stack', body: 'Firmware, PCB, mechanical parts and this site are all open source; the browser simulator is rebuilt from firmware source automatically in CI.' },
+      ],
+      logLink: 'Read the build log →',
     },
     hero: {
       eyebrow: 'Build log · 4.26-inch e-ink reader',
@@ -667,6 +693,8 @@ export const ui: Record<Lang, Content> = {
   },
   zh: {
     nav: {
+      home: '首页',
+      system: '系统',
       features: '在做什么',
       notes: '手记',
       firmware: '固件',
@@ -674,6 +702,20 @@ export const ui: Record<Lang, Content> = {
       cards: '卡片工坊',
       tools: '工具台',
       github: 'GitHub',
+    },
+    system: {
+      eyebrow: '系统',
+      title: '壹頁是怎么搭起来的。',
+      lede: '一台小小的墨水屏阅读器,背后是一套相当完整的软件栈。这一页把整个系统一次讲清 —— 从芯片到你手中的这一页。',
+      archTitle: '软件栈',
+      layers: [
+        { name: '硬件与抽象层', body: 'ESP32-C61、4.26″ 墨水屏、按键与电源,统一收在一层薄薄的硬件抽象(HAL)后面 —— 所以同一份固件既能跑在桌面模拟器,也能跑在浏览器 WASM 版。' },
+        { name: '渲染与字体', body: '自研重排引擎在 480×800 上排版 TXT/EPUB,支持字距、断词与用心的中文换行;字体是本站生成的 SD 卡 .cpfont 字包。' },
+        { name: '内容', body: 'TXT 与 EPUB 靠索引 sidecar 秒开、按书记忆续读进度,并可在设备端下载查词词典。' },
+        { name: '联网与配置', body: '内置 Web Server,手机通过 Wi-Fi 即可推送书、字体和设置,无需数据线;卡片工坊与各类工具全部在浏览器本地运行。' },
+        { name: '开源栈', body: '固件、PCB、结构件与这个网站全部开源;浏览器模拟器由 CI 从固件源码自动重编。' },
+      ],
+      logLink: '查看开发手记 →',
     },
     hero: {
       eyebrow: '开发手记 · 4.26 英寸墨水屏阅读器',
@@ -1087,10 +1129,10 @@ export const ui: Record<Lang, Content> = {
 /** Site base path (e.g. '/onepage-reader-web/'); '/' in dev. Always ends with '/'. */
 const BASE = import.meta.env.BASE_URL;
 
-/** Build a locale-aware, base-prefixed href. en is the default (no locale prefix); zh is /zh/. */
+/** Build a locale-aware, base-prefixed href. zh is the default (no locale prefix); en is /en/. */
 export function localizedPath(path: string, lang: Lang): string {
   const clean = path.startsWith('/') ? path : `/${path}`;
-  let locale = lang === 'en' ? (clean === '/' ? '/' : clean) : clean === '/' ? '/zh/' : `/zh${clean}`;
+  let locale = lang === 'zh' ? (clean === '/' ? '/' : clean) : clean === '/' ? '/en/' : `/en${clean}`;
   // Astro emits dir-style pages (dist/log/index.html), so keep a trailing slash to
   // avoid a 301 hop on every internal link. Skip files that carry an extension.
   if (!locale.endsWith('/') && !locale.slice(locale.lastIndexOf('/') + 1).includes('.')) locale += '/';

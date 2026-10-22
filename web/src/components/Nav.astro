@@ -16,15 +16,15 @@ const GITHUB_URL = 'https://github.com/MoveCall/onepage-reader';
 const otherLang: Lang = lang === 'en' ? 'zh' : 'en';
 const otherLabel = lang === 'en' ? '中文' : 'EN';
 const home = localizedPath('/', lang);
+const systemPath = localizedPath('/system', lang);
 const toolsPath = localizedPath('/tools', lang);
 const firmwarePath = localizedPath('/firmware', lang);
-const logPath = localizedPath('/log', lang);
 
 // Same page in the other language — strip the base prefix and locale, then rebuild.
 const base = import.meta.env.BASE_URL;
 let logical = Astro.url.pathname;
 if (logical.startsWith(base)) logical = '/' + logical.slice(base.length);
-logical = logical.replace(/^\/zh(?=\/|$)/, '') || '/';
+logical = logical.replace(/^\/en(?=\/|$)/, '') || '/';
 const switchHref = switchHrefOverride ?? localizedPath(logical, otherLang);
 ---
 
@@ -37,8 +37,8 @@ const switchHref = switchHrefOverride ?? localizedPath(logical, otherLang);
     </a>
 
     <div class="flex items-center gap-x-1 font-mono text-[13px] sm:gap-x-3">
-      <a href={`${home}#features`} class="hidden px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink sm:inline">{t.features}</a>
-      <a href={logPath} class="hidden px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink sm:inline">{t.notes}</a>
+      <a href={home} class="px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink">{t.home}</a>
+      <a href={systemPath} class="px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink">{t.system}</a>
       <a href={toolsPath} class="px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink">{t.tools}</a>
       <a href={firmwarePath} class="px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink">{t.firmware}</a>
       <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="hidden px-1.5 py-1 font-medium text-ink/55 no-underline hover:text-ink sm:inline">{t.github}</a>

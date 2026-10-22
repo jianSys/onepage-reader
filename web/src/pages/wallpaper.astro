@@ -6,7 +6,7 @@ import WallpaperTool from '../components/WallpaperTool.astro';
 import Footer from '../components/Footer.astro';
 import { ui, localizedPath } from '../i18n/ui';
 
-const lang = 'en';
+const lang = 'zh';
 const t = ui[lang].tools;
 const backLabel = t.backLabel;
 const backHref = localizedPath('/tools', lang);
@@ -14,8 +14,8 @@ const backHref = localizedPath('/tools', lang);
 
 <Layout
   lang={lang}
-  title="Wallpaper Maker — OnePage · 壹頁"
-  description="Build 480×800 e-ink lock-screen wallpapers with a live clock or quote overlay — 1-bit dithered or 4-level grayscale — ready to drop on the SD card or push over Wi-Fi. Runs entirely in your browser."
+  title="壁纸制作器 — 壹頁 · OnePage"
+  description="做 480×800 墨水屏锁屏壁纸，叠加大时钟或引言 —— 1-bit 抖动或 4 级灰阶，可直接放进 SD 卡或通过 Wi-Fi 推送到设备。全部在你的浏览器里完成。"
 >
   <Nav lang={lang} />
   <main>

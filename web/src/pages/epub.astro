@@ -6,7 +6,7 @@ import EpTool from '../components/EpTool.astro';
 import Footer from '../components/Footer.astro';
 import { ui, localizedPath } from '../i18n/ui';
 
-const lang = 'en';
+const lang = 'zh';
 const t = ui[lang].tools;
 const backLabel = t.backLabel;
 const backHref = localizedPath('/tools', lang);
@@ -14,8 +14,8 @@ const backHref = localizedPath('/tools', lang);
 
 <Layout
   lang={lang}
-  title="Book Info & Cover — OnePage · 壹頁"
-  description="Read EPUB / TXT metadata (title, author, language, publisher, chapters) and turn the embedded cover into a 480×800 e-ink bitmap — 1-bit dithered or 4-level grayscale. Unzipped and parsed entirely in your browser."
+  title="书籍信息与封面 — 壹頁 · OnePage"
+  description="读取 EPUB / TXT 元数据（书名、作者、语言、出版社、章节数），并把内嵌封面变成 480×800 墨水屏位图 —— 1-bit 抖动或 4 级灰阶。解压与解析全部在你的浏览器里完成。"
 >
   <Nav lang={lang} />
   <main>

@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import System from '../components/System.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'zh';
+---
+
+<Layout
+  lang={lang}
+  title="系统 —— 壹頁 · OnePage"
+  description="壹頁的整个软件系统一览：硬件抽象层、重排渲染与字体引擎、TXT/EPUB 内容、内置 Web Server 联网配置，以及全开源的固件与浏览器模拟器。"
+>
+  <Nav lang={lang} />
+  <main>
+    <System lang={lang} />
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>
