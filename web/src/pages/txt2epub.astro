@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolShell from '../components/ToolShell.astro';
+import Txt2EpubTool from '../components/Txt2EpubTool.astro';
+import Footer from '../components/Footer.astro';
+import { ui, localizedPath } from '../i18n/ui';
+
+const lang = 'zh';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="TXT 打包成 EPUB — 壹頁 · OnePage"
+  description="把纯文本 TXT 书打成带封面和章节目录的正规 EPUB —— 编码修复、去广告、按正则分章，全部在你的浏览器里完成，什么都不上传。可直接下载进 SD 卡或通过 Wi-Fi 推送到设备。"
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.txt2epub.name}
+      title={t.items.txt2epub.name}
+      lede={t.items.txt2epub.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <Txt2EpubTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

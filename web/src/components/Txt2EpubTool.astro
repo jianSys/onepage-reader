@@ -1,0 +1,341 @@
+---
+import type { Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+
+const chapterDefault =
+  '^\\s*(?:第\\s*[0-9一二三四五六七八九十百千万零〇两]+\\s*[章节回卷篇折]|序章|楔子|前言|引子|尾声|后记|番外|终章|Chapter\\s+\\d+|PROLOGUE|EPILOGUE)';
+
+const strings = {
+  noFile: zh ? '请先选择一个 TXT 文件。' : 'Pick a TXT file first.',
+  processing: zh ? '正在处理…' : 'Processing…',
+  ready: zh ? '就绪。' : 'Ready.',
+  building: zh ? '正在打包 EPUB…' : 'Building EPUB…',
+  built: zh ? '已生成 EPUB（{chapters} 章）。' : 'EPUB built ({chapters} chapters).',
+  pushed: zh ? '已推送到设备。' : 'Pushed to device.',
+  pushFailed: zh ? '推送失败，请检查设备地址与网络。' : 'Push failed — check the device address and network.',
+  deviceChecking: zh ? '检测中…' : 'Checking…',
+  deviceOnline: zh ? '设备在线。' : 'Device online.',
+  deviceOffline: zh ? '设备离线或未填写地址。' : 'Device offline or address missing.',
+  previewEmpty: zh ? '识别到的章节目录会显示在这里。' : 'The detected chapter outline shows up here.',
+  lblChapters: zh ? '章节' : 'chapters',
+  lblWords: zh ? '字数' : 'chars',
+  loaded: '',
+};
+
+const L = {
+  metaTitle: zh ? '书籍信息' : 'Book info',
+  titleLabel: zh ? '书名' : 'Title',
+  titlePh: zh ? '默认取文件名' : 'Defaults to the file name',
+  authorLabel: zh ? '作者' : 'Author',
+  authorPh: zh ? '佚名' : 'Unknown',
+  langLabel: zh ? '语言' : 'Language',
+  pick: zh ? '选择或拖入一个 .txt 文件' : 'Choose or drop a .txt file',
+  dropSub: zh ? '本地解码与打包，绝不上传。' : 'Decoded and packaged locally — never uploaded.',
+  encTitle: zh ? '编码' : 'Encoding',
+  encHint: zh ? '「自动检测」先按 UTF-8 严格解码，失败再回退常见中日韩代码页。' : 'Auto-detect tries strict UTF-8, then common CJK code pages.',
+  optTitle: zh ? '正文整理' : 'Body tidying',
+  optStripAds: zh ? '去除广告 / 水印行' : 'Strip ad / watermark lines',
+  optCollapse: zh ? '合并多余空行' : 'Collapse extra blank lines',
+  optTrim: zh ? '去除行尾空格' : 'Trim trailing whitespace',
+  coverTitle: zh ? '封面' : 'Cover',
+  optCover: zh ? '生成一张书名封面页' : 'Generate a title cover page',
+  chapterTitle: zh ? '章节识别' : 'Chapter detection',
+  chapterOn: zh ? '按正则拆分章节（每个章节一个页面 + 目录）' : 'Split chapters by regex (one page each + TOC)',
+  chapterRe: zh ? '章节标题正则' : 'Chapter heading regex',
+  chapterOff: zh ? '关闭则整本作为单章打包。' : 'Off: the whole text becomes a single chapter.',
+  tocTitle: zh ? '章节目录预览' : 'Chapter outline',
+  deviceLabel: zh ? '设备地址' : 'Device address',
+  destLabel: zh ? '保存目录' : 'Save folder',
+  probeBtn: zh ? '探测' : 'Probe',
+  downloadBtn: zh ? '下载 EPUB' : 'Download EPUB',
+  pushBtn: zh ? '推送到设备' : 'Push to device',
+  offlineNote: zh
+    ? '全部在你的浏览器本地完成，原文不上传。生成的 EPUB 2（含目录、可选封面）可直接放进 SD 卡，或通过设备内置 Web 服务的 /upload 推送。'
+    : 'Everything runs locally — nothing is uploaded. The generated EPUB 2 (with a TOC and an optional cover) can go straight onto the SD card, or be pushed via the device’s built-in /upload endpoint.',
+  footNote: zh
+    ? '提示：分章正则决定目录结构；若你的 TXT 章节标题样式特殊，改一下正则即可。阅读进度索引 index.bin 仍由固件在设备上生成。'
+    : 'Tip: the chapter regex defines the outline — tweak it if your headings use an unusual style. The reading-progress index.bin is still generated on-device by the firmware.',
+};
+---
+
+<section class="tx py-6 sm:py-8" data-t2e={JSON.stringify({ strings })}>
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div>
+        {/* Dropzone */}
+        <div id="t2eDrop" class="tx-drop" tabindex="0" role="button" aria-label={strings.noFile}>
+          <svg class="tx-drop-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 8 12 3 3 8v8l9 5 9-5z M3 8l9 5 9-5 M12 13v8" />
+          </svg>
+          <p class="tx-drop-title" id="t2ePick">{L.pick}</p>
+          <p class="tx-drop-sub">{L.dropSub}</p>
+          <span id="t2eFileName" class="tx-filename"></span>
+        </div>
+        <input id="t2eFile" type="file" accept=".txt,text/plain" class="hidden" />
+
+        {/* Book info */}
+        <h2 class="tx-h2">{L.metaTitle}</h2>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <label class="tx-field">
+            <span class="tx-flabel">{L.titleLabel}</span>
+            <input id="t2eTitle" type="text" placeholder={L.titlePh} class="tx-control" />
+          </label>
+          <label class="tx-field">
+            <span class="tx-flabel">{L.authorLabel}</span>
+            <input id="t2eAuthor" type="text" placeholder={L.authorPh} class="tx-control" />
+          </label>
+        </div>
+        <label class="tx-field mt-3">
+          <span class="tx-flabel">{L.langLabel}</span>
+          <select id="t2eLang" class="tx-control">
+            <option value="zh" selected={zh}>中文</option>
+            <option value="en" selected={!zh}>English</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+          </select>
+        </label>
+
+        {/* Encoding */}
+        <h2 class="tx-h2">{L.encTitle}</h2>
+        <select id="t2eEncoding" class="tx-control mt-3">
+          <option value="auto">{zh ? '自动检测' : 'Auto-detect'}</option>
+          <option value="utf-8">UTF-8</option>
+          <option value="gb18030">GBK / GB18030</option>
+          <option value="big5">Big5</option>
+          <option value="shift_jis">Shift_JIS</option>
+          <option value="euc-kr">EUC-KR</option>
+          <option value="windows-1252">Windows-1252 / Latin-1</option>
+        </select>
+        <p class="tx-hint">{L.encHint}</p>
+
+        {/* Tidying */}
+        <h2 class="tx-h2">{L.optTitle}</h2>
+        <div class="mt-3 grid gap-2.5">
+          <label class="tx-check"><input id="t2eStripAds" type="checkbox" checked /> <span>{L.optStripAds}</span></label>
+          <label class="tx-check"><input id="t2eCollapse" type="checkbox" checked /> <span>{L.optCollapse}</span></label>
+          <label class="tx-check"><input id="t2eTrim" type="checkbox" checked /> <span>{L.optTrim}</span></label>
+        </div>
+
+        {/* Cover */}
+        <h2 class="tx-h2">{L.coverTitle}</h2>
+        <label class="tx-check mt-3"><input id="t2eCover" type="checkbox" checked /> <span>{L.optCover}</span></label>
+      </div>
+
+      {/* Right column */}
+      <div>
+        {/* Chapter detection */}
+        <h2 class="tx-h2">{L.chapterTitle}</h2>
+        <label class="tx-check mt-3"><input id="t2eChapterOn" type="checkbox" checked /> <span>{L.chapterOn}</span></label>
+        <label class="tx-field mt-3">
+          <span class="tx-flabel">{L.chapterRe}</span>
+          <input id="t2eChapterRe" type="text" value={chapterDefault} class="tx-control tx-mono" />
+        </label>
+        <p class="tx-hint">{L.chapterOff}</p>
+
+        <p id="t2eStats" class="tx-stats mt-6"></p>
+        <h2 class="tx-h2 mt-4">{L.tocTitle}</h2>
+        <pre id="t2ePreview" class="tx-preview mt-3">{strings.previewEmpty}</pre>
+
+        {/* Device */}
+        <div class="mt-8">
+          <label class="tx-field">
+            <span class="tx-flabel">{L.deviceLabel}</span>
+            <div class="flex items-center gap-2">
+              <input id="t2eDevice" type="text" value="http://192.168.4.1" class="tx-control flex-1" />
+              <button id="t2eProbe" type="button" class="tx-btn tx-btn-ghost shrink-0">{L.probeBtn}</button>
+            </div>
+          </label>
+          <label class="tx-field mt-3">
+            <span class="tx-flabel">{L.destLabel}</span>
+            <input id="t2eDest" type="text" value="/books" class="tx-control" />
+          </label>
+          <p id="t2eDeviceStatus" class="mt-2 font-mono text-xs text-ink/50"></p>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="t2eDownload" type="button" class="tx-btn tx-btn-ghost">{L.downloadBtn}</button>
+          <button id="t2ePush" type="button" class="tx-btn tx-btn-primary">{L.pushBtn}</button>
+        </div>
+        <p id="t2eStatus" class="mt-4 font-mono text-xs text-ink/60">{strings.ready}</p>
+        <p class="mt-2 max-w-[60ch] text-xs/5 text-ink/45">{L.offlineNote}</p>
+      </div>
+    </div>
+
+    <p class="mt-12 border-t border-ink/10 pt-4 text-xs/5 text-ink/40">{L.footNote}</p>
+  </div>
+</section>
+
+<style>
+  .tx-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    cursor: pointer;
+    border: 1.5px dashed color-mix(in oklab, var(--color-ink) 22%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    padding: 30px 20px;
+    transition: border-color 0.16s ease, background 0.16s ease;
+  }
+  .tx-drop:hover,
+  .tx-drop:focus-visible,
+  .tx-drop.dragover {
+    border-color: var(--color-accent-500);
+    background: color-mix(in oklab, var(--color-accent-500) 6%, var(--color-surface));
+    outline: none;
+  }
+  .tx-drop.has-file {
+    padding: 14px 20px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .tx-drop.has-file .tx-drop-icon,
+  .tx-drop.has-file .tx-drop-sub {
+    display: none;
+  }
+  .tx-drop.has-file .tx-drop-title::after {
+    content: ' ✓';
+    color: var(--color-accent-600);
+  }
+  .tx-drop-icon {
+    color: var(--color-accent-600);
+  }
+  .tx-drop-title {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--color-ink);
+  }
+  .tx-drop-sub {
+    font-size: 13px;
+    color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  }
+  .tx-filename {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .tx-h2 {
+    margin-top: 30px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-accent-600);
+  }
+  .tx-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tx-flabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .tx-control {
+    width: 100%;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .tx-control:focus {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-500) 25%, transparent);
+  }
+  .tx-mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .tx-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .tx-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent-600);
+  }
+  .tx-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: color-mix(in oklab, var(--color-ink) 45%, transparent);
+  }
+  .tx-stats {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--color-accent-600);
+    min-height: 1.2em;
+  }
+  .tx-preview {
+    max-height: 300px;
+    overflow: auto;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 16px 18px;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color-ink);
+  }
+  .tx-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .tx-btn-ghost {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+  .tx-btn-ghost:hover {
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
+  }
+  .tx-btn-primary {
+    border: 1px solid var(--color-accent-600);
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    font-weight: 600;
+  }
+  .tx-btn-primary:hover {
+    background: var(--color-accent-700);
+    border-color: var(--color-accent-700);
+  }
+</style>
+
+<script>
+  import { initTxt2Epub } from '../tools/txt2epub';
+
+  const section = document.querySelector('[data-t2e]');
+  if (section) {
+    const props = JSON.parse(section.getAttribute('data-t2e') || '{}');
+    initTxt2Epub(props);
+  }
+</script>

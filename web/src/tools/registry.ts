@@ -3,7 +3,7 @@
 // shared ToolShell chrome both read from this list, so navigation, cards and
 // breadcrumbs stay in sync automatically.
 
-export type ToolId = 'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub';
+export type ToolId = 'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub' | 'txt2epub';
 
 export interface ToolDescriptor {
   id: ToolId;
@@ -65,5 +65,13 @@ export const tools: ToolDescriptor[] = [
     status: 'ready',
     // an open book
     icon: 'M12 6c-2-1.5-5-1.5-8 0v12c3-1.5 6-1.5 8 0 2-1.5 5-1.5 8 0V6c-3-1.5-6-1.5-8 0z M12 6v12',
+  },
+  {
+    id: 'txt2epub',
+    path: '/txt2epub',
+    surface: 'light',
+    status: 'ready',
+    // a package / box — “打包” metaphor
+    icon: 'M21 8 12 3 3 8v8l9 5 9-5z M3 8l9 5 9-5 M12 13v8',
   },
 ];

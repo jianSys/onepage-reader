@@ -175,7 +175,7 @@ type ToolsContent = {
   soonLabel: string;
   openLabel: string;
   backLabel: string;
-  items: Record<'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub', { name: string; tagline: string }>;
+  items: Record<'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub' | 'txt2epub', { name: string; tagline: string }>;
 };
 
 type Content = {
@@ -621,6 +621,7 @@ export const ui: Record<Lang, Content> = {
         wallpaper: { name: 'Wallpaper Maker', tagline: 'Build 480×800 lock-screen wallpapers with a clock or quote overlay.' },
         txt: { name: 'TXT Tidier', tagline: 'Fix encoding, strip ads, split chapters — all in your browser.' },
         epub: { name: 'Book Info & Cover', tagline: 'Read EPUB / TXT metadata and export a cover BMP.' },
+        txt2epub: { name: 'TXT → EPUB', tagline: 'Pack a plain-text book into a real EPUB with cover and chapters.' },
       },
     },
   },
@@ -1007,6 +1008,7 @@ export const ui: Record<Lang, Content> = {
         wallpaper: { name: '壁纸制作器', tagline: '做 480×800 锁屏壁纸，叠加大时钟或引言。' },
         txt: { name: 'TXT 整理', tagline: '修编码、去广告、分章节 —— 全在浏览器里完成。' },
         epub: { name: '书籍信息与封面', tagline: '读取 EPUB / TXT 元数据并导出封面 BMP。' },
+        txt2epub: { name: 'TXT 打包成 EPUB', tagline: '把纯文本书打成带封面和章节目录的正规 EPUB。' },
       },
     },
   },
