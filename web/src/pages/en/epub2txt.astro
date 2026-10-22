@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Nav from '../../components/Nav.astro';
+import ToolShell from '../../components/ToolShell.astro';
+import Epub2TxtTool from '../../components/Epub2TxtTool.astro';
+import Footer from '../../components/Footer.astro';
+import { ui, localizedPath } from '../../i18n/ui';
+
+const lang = 'en';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="EPUB → TXT — OnePage · 壹頁"
+  description="Extract the body text from an EPUB in reading order and turn it into clean plain text — styling and images stripped, with an optional title/author header and chapter headings. Everything runs in your browser, nothing is uploaded. Download to the SD card or push over Wi-Fi."
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.epub2txt.name}
+      title={t.items.epub2txt.name}
+      lede={t.items.epub2txt.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <Epub2TxtTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>

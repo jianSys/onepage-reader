@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolShell from '../components/ToolShell.astro';
+import Epub2TxtTool from '../components/Epub2TxtTool.astro';
+import Footer from '../components/Footer.astro';
+import { ui, localizedPath } from '../i18n/ui';
+
+const lang = 'zh';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="EPUB 导出成 TXT — 壹頁 · OnePage"
+  description="把 EPUB 按阅读顺序抽取正文并转成干净的纯文本 TXT —— 剥离样式与图片，可选保留书名/作者头和章节标题，全部在你的浏览器里完成，什么都不上传。可直接下载进 SD 卡或通过 Wi-Fi 推送到设备。"
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.epub2txt.name}
+      title={t.items.epub2txt.name}
+      lede={t.items.epub2txt.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <Epub2TxtTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>
