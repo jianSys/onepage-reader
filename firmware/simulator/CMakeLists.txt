@@ -42,8 +42,8 @@ FetchContent_MakeAvailable(qrcode)
 
 # libcurl — backs the native simulator's esp_http_client shim (shims/esp_http_client.h)
 # so WeRead, AirPage, and any other on-device HTTPS code paths we don't exclude can hit
-# the real network from host. The WASM build is offline-only (the same shim compiles a
-# curl-free stub under #ifdef __EMSCRIPTEN__), so it skips libcurl entirely.
+# the real network from host. The WASM build uses the same shim's curl-free
+# emscripten_fetch backend under #ifdef __EMSCRIPTEN__, so it skips libcurl entirely.
 if(NOT EMSCRIPTEN)
     find_package(CURL REQUIRED)
 endif()
@@ -311,6 +311,10 @@ if(EMSCRIPTEN)
         "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString,HEAPU8,FS"
         "-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_simulator_framebuffer_ptr,_simulator_consume_dirty,_simulator_display_width,_simulator_display_height,_simulator_buffer_size,_simulator_inject_button"
         "--preload-file=${SIMULATOR_SD_DEMO}@/sd"
+        # IndexedDB-backed /sd persistence for the browser build (see
+        # idbfs_persist.js for the design and its verified runtime assumptions).
+        -lidbfs.js
+        "--pre-js=${CMAKE_CURRENT_SOURCE_DIR}/idbfs_persist.js"
     )
     set_target_properties(crosspoint_simulator PROPERTIES
         OUTPUT_NAME "crosspoint_simulator_wasm"

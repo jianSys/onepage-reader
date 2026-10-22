@@ -86,9 +86,18 @@ browser: `index.html` maps `navigator.language` to a `--lang ZH_CN|EN` arg that
 `simulator_main_wasm.cpp` applies before first render. FreeRTOS tasks run on Web Worker threads
 (pthreads), so the page must be cross-origin isolated (COOP/COEP).
 
-Because the browser build has no libcurl, all networked features are offline: WeRead and any
-other HTTPS path return errors through the esp_http_client stub, so those screens render but fetch
-nothing. (Network config / OPDS / KOReader / OTA are out of scope on both builds — see below.)
+Because the browser build has no libcurl, `shims/esp_http_client.h` runs its WASM branch on
+synchronous `emscripten_fetch` (the firmware's Web Worker threads can block; the main thread
+cannot). Networked screens therefore work in the browser **when** the endpoint is reachable from
+the page's network and answers CORS (`Access-Control-Allow-Origin`) — the page is COEP-isolated,
+so non-CORS responses fail. Everything degrades to the offline error path otherwise (status 0,
+fetch failure), exactly as before the fetch backend existed. (Network config / OPDS / KOReader /
+OTA are out of scope on both builds — see below.)
+
+The WASM `/sd` is persistent: `simulator/idbfs_persist.js` (linked via `--pre-js`) mirrors the
+MEMFS card into an IndexedDB-backed IDBFS store and replays it over the seed image on boot, so
+reading position, settings and downloaded dictionaries survive a page reload. `/sd/.fonts` is
+excluded (re-staged by the page each boot).
 
 ```sh
 # Prerequisites: emsdk (https://github.com/emscripten-core/emsdk), activated.
