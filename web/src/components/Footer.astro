@@ -12,7 +12,6 @@ const a = ui[lang].about;
 const f = ui[lang].footer;
 const logLabel = ui[lang].nav.notes;
 const logPath = localizedPath('/log', lang);
-const GITHUB_URL = 'https://github.com/MoveCall/onepage-reader';
 const year = new Date().getFullYear();
 ---
 
@@ -40,8 +39,6 @@ const year = new Date().getFullYear();
     </div>
     <div class="flex items-center gap-3 font-mono text-[13px]">
       <a href={logPath} class="font-medium text-ink/55 no-underline hover:text-ink">{logLabel}</a>
-      <span class="text-ink/25">/</span>
-      <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="font-medium text-ink/55 no-underline hover:text-ink">GitHub</a>
       <span class="text-ink/25">/</span>
       <span class="text-ink/55">© {year}</span>
     </div>
