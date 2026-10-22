@@ -185,17 +185,29 @@
       function stageCjkFont(M, V) {
         const dep = "cjk-font";
         M.addRunDependency(dep);
-        fetch(CJK_FONT_URL + "?v=" + V)
+        const url = CJK_FONT_URL + "?v=" + V;
+        // Transient failures (cold CDN, flaky radio) used to leave Chinese text as
+        // invisible replacement glyphs with only a console warning. Retry twice
+        // with backoff, then say so on the hint bar.
+        const grab = (attempt) => fetch(url)
           .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+          .catch((e) => {
+            if (attempt < 2) return new Promise((res) => setTimeout(res, 1200 * (attempt + 1))).then(() => grab(attempt + 1));
+            throw e;
+          });
+        grab(0)
           .then((b) => { M.FS.mkdirTree("/sd/.fonts/LXGWWenKai-Regular");
                          M.FS.writeFile(CJK_FONT_PATH, new Uint8Array(b)); })
-          .catch((e) => console.warn("[sim] CJK font unavailable, Chinese will show replacement glyphs:", e))
+          .catch((e) => { console.warn("[sim] CJK font unavailable after retries, Chinese will show replacement glyphs:", e);
+                          const h = document.getElementById("hint");
+                          if (h) h.textContent = uiLang() === "zh" ? "⚠ 中文字体加载失败，中文将显示为方块占位符（刷新可重试）"
+                                                                     : "⚠ CJK font failed to load — Chinese renders as placeholder glyphs (reload to retry)"; })
           .finally(() => M.removeRunDependency(dep));
       }
 
       function start() {
         const lang = startupLanguage();
-        const V = "20261021-hint"; // cache-bust: bump on each firmware rebuild
+        const V = "20261021-persist"; // cache-bust: bump on each firmware rebuild
         const s = document.createElement("script");
         s.src = "crosspoint_simulator_wasm.js?v=" + V;
         s.onerror = () => fail("Failed to load simulator wasm.");
