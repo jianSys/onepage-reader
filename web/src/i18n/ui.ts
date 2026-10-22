@@ -175,7 +175,7 @@ type ToolsContent = {
   soonLabel: string;
   openLabel: string;
   backLabel: string;
-  items: Record<'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub' | 'txt2epub' | 'epub2txt', { name: string; tagline: string }>;
+  items: Record<'cards' | 'fonts' | 'images' | 'wallpaper' | 'txt' | 'epub' | 'txt2epub' | 'epub2txt' | 'readingStats', { name: string; tagline: string }>;
 };
 
 type Content = {
@@ -623,6 +623,7 @@ export const ui: Record<Lang, Content> = {
         epub: { name: 'Book Info & Cover', tagline: 'Read EPUB / TXT metadata and export a cover BMP.' },
         txt2epub: { name: 'TXT → EPUB', tagline: 'Pack a plain-text book into a real EPUB with cover and chapters.' },
         epub2txt: { name: 'EPUB → TXT', tagline: 'Pull the body text out of an EPUB into clean, readable plain text.' },
+        readingStats: { name: 'Reading Stats', tagline: 'A dashboard of your reading time, sessions and pace, pulled live from the device.' },
       },
     },
   },
@@ -1011,6 +1012,7 @@ export const ui: Record<Lang, Content> = {
         epub: { name: '书籍信息与封面', tagline: '读取 EPUB / TXT 元数据并导出封面 BMP。' },
         txt2epub: { name: 'TXT 打包成 EPUB', tagline: '把纯文本书打成带封面和章节目录的正规 EPUB。' },
         epub2txt: { name: 'EPUB 导出成 TXT', tagline: '把 EPUB 正文按阅读顺序抽成干净的纯文本。' },
+        readingStats: { name: '阅读统计看板', tagline: '从设备实时读取阅读时长、会话与速度，汇成看板与趋势。' },
       },
     },
   },

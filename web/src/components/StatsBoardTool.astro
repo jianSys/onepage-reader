@@ -1,0 +1,245 @@
+---
+import type { Lang } from '../i18n/ui';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+
+const strings = {
+  checking: zh ? '检测中…' : 'Checking…',
+  reading: zh ? '读取中…' : 'Reading…',
+  online: zh ? '设备在线。' : 'Device online.',
+  offline: zh ? '设备离线或未填写地址。' : 'Device offline or address missing.',
+  fetched: zh ? '已更新。' : 'Updated.',
+  fetchFailed: zh ? '读取失败，请检查设备地址、网络与混合内容限制。' : 'Read failed — check the address, network and mixed-content limits.',
+  noAddr: zh ? '请先填写设备地址。' : 'Enter a device address first.',
+  cleared: zh ? '已清空本地快照。' : 'Local snapshots cleared.',
+  copied: zh ? '摘要已复制到剪贴板。' : 'Summary copied.',
+  copyFailed: zh ? '复制失败，请手动选择文本。' : 'Copy failed — select the text manually.',
+  trendEmpty: zh ? '趋势需要至少两次读取记录（本浏览器保存）。' : 'The trend needs at least two reads (stored in this browser).',
+  dash: '—',
+};
+
+const L = {
+  connTitle: zh ? '连接设备' : 'Connect',
+  deviceLabel: zh ? '设备地址' : 'Device address',
+  probeBtn: zh ? '探测' : 'Probe',
+  refreshBtn: zh ? '读取 / 刷新' : 'Read / Refresh',
+  copyBtn: zh ? '复制摘要' : 'Copy summary',
+  clearBtn: zh ? '清空快照' : 'Clear snapshots',
+  heroTitle: zh ? '累计数据' : 'All-time',
+  hTime: zh ? '累计阅读时长' : 'Total reading time',
+  hSessions: zh ? '阅读会话' : 'Sessions',
+  hPages: zh ? '累计翻页' : 'Page turns',
+  hUptime: zh ? '本次开机时长' : 'Current uptime',
+  derivedTitle: zh ? '派生指标' : 'Derived',
+  dAvg: zh ? '平均每会话' : 'Per session',
+  dPages: zh ? '每会话页数' : 'Pages / session',
+  dPace: zh ? '阅读速度' : 'Reading pace',
+  trendTitle: zh ? '每日阅读趋势' : 'Daily reading trend',
+  connHint: zh
+    ? '数据来自设备内置 Web 服务的 /api/stats（累计量）。请让电脑与设备在同一网络（设备热点或局域网）。若站点走 HTTPS 而设备是 HTTP，浏览器可能因混合内容拦截，可改用 HTTP 打开本站。'
+    : 'Figures come from the device’s /api/stats endpoint (running totals). Keep this computer on the same network as the reader (its AP or your LAN). If the site is HTTPS but the device is HTTP, the browser may block the request as mixed content — open the site over HTTP instead.',
+  trendHint: zh
+    ? '设备只上报累计量、没有历史，因此趋势图来自本站在每次成功读取时保存的本地快照，按天累加阅读时长增量。换浏览器或清站点数据后从零开始。'
+    : 'The device only reports running totals, so this chart is built from local snapshots this page saves on each successful read, summing reading-time gains per day. It restarts from zero in a new browser or after site data is cleared.',
+};
+---
+
+<section class="sb py-6 sm:py-8" data-sb={JSON.stringify({ strings, zh })}>
+  <div class="mx-auto max-w-4xl px-6">
+    {/* Connection */}
+    <div class="sb-card">
+      <h2 class="sb-h2">{L.connTitle}</h2>
+      <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label class="sb-field flex-1">
+          <span class="sb-flabel">{L.deviceLabel}</span>
+          <input id="sbDevice" type="text" value="http://192.168.4.1" class="sb-control" />
+        </label>
+        <div class="flex items-center gap-2">
+          <button id="sbProbe" type="button" class="sb-btn sb-btn-ghost">{L.probeBtn}</button>
+          <button id="sbRefresh" type="button" class="sb-btn sb-btn-primary">{L.refreshBtn}</button>
+        </div>
+      </div>
+      <p id="sbDeviceStatus" class="mt-2 font-mono text-xs text-ink/50"></p>
+      <p id="sbStatus" class="mt-1 font-mono text-xs text-ink/60"></p>
+      <p class="mt-3 max-w-[70ch] text-xs/5 text-ink/45">{L.connHint}</p>
+    </div>
+
+    {/* All-time stats */}
+    <h2 class="sb-h2 mt-10">{L.heroTitle}</h2>
+    <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div class="sb-stat sb-stat-hero">
+        <span class="sb-slabel">{L.hTime}</span>
+        <span id="sbTime" class="sb-svalue">—</span>
+      </div>
+      <div class="sb-stat">
+        <span class="sb-slabel">{L.hSessions}</span>
+        <span id="sbSessions" class="sb-svalue">—</span>
+      </div>
+      <div class="sb-stat">
+        <span class="sb-slabel">{L.hPages}</span>
+        <span id="sbPages" class="sb-svalue">—</span>
+      </div>
+      <div class="sb-stat">
+        <span class="sb-slabel">{L.hUptime}</span>
+        <span id="sbUptime" class="sb-svalue">—</span>
+      </div>
+    </div>
+
+    {/* Derived */}
+    <h2 class="sb-h2 mt-8">{L.derivedTitle}</h2>
+    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="sb-stat">
+        <span class="sb-slabel">{L.dAvg}</span>
+        <span id="sbAvgSession" class="sb-svalue sb-svalue-sm">—</span>
+      </div>
+      <div class="sb-stat">
+        <span class="sb-slabel">{L.dPages}</span>
+        <span id="sbPagesSession" class="sb-svalue sb-svalue-sm">—</span>
+      </div>
+      <div class="sb-stat">
+        <span class="sb-slabel">{L.dPace}</span>
+        <span id="sbPace" class="sb-svalue sb-svalue-sm">—</span>
+      </div>
+    </div>
+
+    {/* Trend */}
+    <h2 class="sb-h2 mt-8">{L.trendTitle}</h2>
+    <div class="sb-card mt-3">
+      <canvas id="sbTrend" width="760" height="180" class="sb-canvas"></canvas>
+      <p id="sbTrendNote" class="mt-2 font-mono text-xs text-ink/55"></p>
+      <p class="mt-2 max-w-[70ch] text-xs/5 text-ink/45">{L.trendHint}</p>
+      <div class="mt-4 flex flex-wrap gap-3">
+        <button id="sbCopy" type="button" class="sb-btn sb-btn-ghost">{L.copyBtn}</button>
+        <button id="sbClear" type="button" class="sb-btn sb-btn-ghost">{L.clearBtn}</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sb-card {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    padding: 20px 22px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .sb-h2 {
+    margin-top: 30px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-accent-600);
+  }
+  .sb-h2:first-child {
+    margin-top: 0;
+  }
+  .sb-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sb-flabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 50%, transparent);
+  }
+  .sb-control {
+    width: 100%;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 15%, transparent);
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .sb-control:focus {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-500) 25%, transparent);
+  }
+  .sb-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 16px 18px;
+  }
+  .sb-stat-hero {
+    background: color-mix(in oklab, var(--color-accent-500) 6%, #ffffff);
+    border-color: color-mix(in oklab, var(--color-accent-500) 28%, transparent);
+  }
+  .sb-slabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--color-ink) 48%, transparent);
+  }
+  .sb-svalue {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    line-height: 1.15;
+    color: var(--color-ink);
+  }
+  .sb-stat-hero .sb-svalue {
+    font-size: 30px;
+    color: var(--color-accent-700);
+  }
+  .sb-svalue-sm {
+    font-size: 22px;
+  }
+  .sb-canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .sb-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .sb-btn-ghost {
+    border: 1px solid color-mix(in oklab, var(--color-ink) 20%, transparent);
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+  .sb-btn-ghost:hover {
+    border-color: var(--color-accent-500);
+    color: var(--color-accent-600);
+  }
+  .sb-btn-primary {
+    border: 1px solid var(--color-accent-600);
+    background: var(--color-accent-600);
+    color: var(--color-surface);
+    font-weight: 600;
+  }
+  .sb-btn-primary:hover {
+    background: var(--color-accent-700);
+    border-color: var(--color-accent-700);
+  }
+</style>
+
+<script>
+  import { initStatsBoard } from '../tools/statsboard';
+
+  const section = document.querySelector('[data-sb]');
+  if (section) {
+    const props = JSON.parse(section.getAttribute('data-sb') || '{}');
+    initStatsBoard(props);
+  }
+</script>

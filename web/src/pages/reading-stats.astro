@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ToolShell from '../components/ToolShell.astro';
+import StatsBoardTool from '../components/StatsBoardTool.astro';
+import Footer from '../components/Footer.astro';
+import { ui, localizedPath } from '../i18n/ui';
+
+const lang = 'zh';
+const t = ui[lang].tools;
+const backLabel = t.backLabel;
+const backHref = localizedPath('/tools', lang);
+---
+
+<Layout
+  lang={lang}
+  title="阅读统计看板 — 壹頁 · OnePage"
+  description="连接你的壹页阅读器，把设备累计的阅读时长、会话、翻页与阅读速度汇成一块看板，并按天画出你的阅读趋势。数据直接从设备 /api/stats 读取，全程在你的浏览器里完成。"
+>
+  <Nav lang={lang} />
+  <main>
+    <ToolShell
+      lang={lang}
+      surface="light"
+      eyebrow={t.items.readingStats.name}
+      title={t.items.readingStats.name}
+      lede={t.items.readingStats.tagline}
+      backLabel={backLabel}
+      backHref={backHref}
+    >
+      <StatsBoardTool lang={lang} />
+    </ToolShell>
+  </main>
+  <Footer lang={lang} showAbout={false} />
+</Layout>
