@@ -3,7 +3,6 @@ import type { Lang } from '../i18n/ui';
 import Nav from './Nav.astro';
 import Hero from './Hero.astro';
 import Materials from './Materials.astro';
-import Gallery from './Gallery.astro';
 import Footer from './Footer.astro';
 
 interface Props {
@@ -17,7 +16,5 @@ const { lang } = Astro.props;
   <Hero lang={lang} />
 
   <Materials lang={lang} />
-
-  <Gallery lang={lang} />
 </main>
 <Footer lang={lang} />

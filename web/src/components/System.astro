@@ -1,6 +1,7 @@
 ---
 import type { Lang } from '../i18n/ui';
 import { ui } from '../i18n/ui';
+import { Image } from 'astro:assets';
 import Logbook from './Logbook.astro';
 import Capabilities from './Capabilities.astro';
 import Specs from './Specs.astro';
@@ -11,6 +12,14 @@ interface Props {
 const { lang } = Astro.props;
 const s = ui[lang].system;
 const fe = ui[lang].features;
+
+// Real firmware UI shots from src/assets/system, matched to the i18n captions by filename.
+const shotFiles = import.meta.glob<{ default: ImageMetadata }>('../assets/system/*.png', { eager: true });
+const shotByName: Record<string, ImageMetadata> = {};
+for (const p in shotFiles) shotByName[p.split('/').pop()!] = shotFiles[p].default;
+const shots = s.shots
+  .map((sh) => ({ ...sh, img: shotByName[sh.src] }))
+  .filter((sh) => sh.img);
 ---
 
 <section id="system" class="scroll-mt-20 border-t border-ink/12 bg-surface py-20 sm:py-28">
@@ -33,6 +42,36 @@ const fe = ui[lang].features;
     </ol>
   </div>
 </section>
+
+{shots.length > 0 && (
+<section class="scroll-mt-20 border-t border-ink/12 bg-surface py-20 sm:py-24">
+  <div class="mx-auto max-w-5xl px-6">
+    <h2 class="font-mono text-sm font-medium tracking-wider text-ink/80 uppercase" data-reveal>{s.shotsTitle}</h2>
+    <div class="mt-10 grid gap-8 sm:grid-cols-3 sm:gap-6">
+      {shots.map((sh, i) => (
+        <figure class="m-0" data-reveal style={`--reveal-delay:${i * 80}ms`}>
+          <div class="rounded-2xl border border-ink/15 bg-ink/70 p-2 shadow-md">
+            <Image
+              src={sh.img}
+              alt={sh.alt}
+              widths={[320, 480, 640]}
+              sizes="(min-width: 640px) 300px, 82vw"
+              format="webp"
+              quality={82}
+              loading="lazy"
+              class="aspect-[3/5] w-full rounded-xl object-cover"
+            />
+          </div>
+          <figcaption class="mt-4">
+            <p class="font-serif text-base font-medium text-ink">{sh.title}</p>
+            <p class="mt-1 text-sm/6 text-ink/60">{sh.caption}</p>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>
+)}
 
 <!-- Capability grid: reading spotlight first, then the rest as a grid -->
 <section id="features" class="scroll-mt-20 border-t border-ink/12 py-20 sm:py-28">

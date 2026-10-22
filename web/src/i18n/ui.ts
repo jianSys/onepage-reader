@@ -222,18 +222,14 @@ type Content = {
     title: string;
     groups: { label: string; rows: { k: string; v: string }[] }[];
   };
-  gallery: {
-    eyebrow: string;
-    title: string;
-    dotLabel: string;
-    photos: { src: string; alt: string; title: string; sub: string }[];
-  };
   system: {
     eyebrow: string;
     title: string;
     lede: string;
     archTitle: string;
     layers: { name: string; body: string }[];
+    shotsTitle: string;
+    shots: { src: string; alt: string; title: string; caption: string }[];
   };
   fonts: FontsContent;
   firmware: FirmwareContent;
@@ -265,6 +261,12 @@ export const ui: Record<Lang, Content> = {
         { name: 'Connectivity', body: 'A built-in web server serves file transfer, a settings UI/API, WebSocket uploads, WebDAV, an OPDS browser and OTA checks, over an AP hotspot (192.168.4.1) or your own Wi-Fi. A BLE page-turner and remappable buttons round it out.' },
         { name: 'Build & toolchain', body: 'One firmware tree, three ways out: PlatformIO / ESP-IDF flashes the device, a CMake + SDL2 target runs it as a native desktop window, and an Emscripten target compiles the very same code into the WASM simulator you can try on this page. The companion browser tools — the .cpfont builder and Card Studio — emit files straight onto the SD card.' },
         { name: 'Open base', body: 'The reader core is a port of CrossPoint, an MIT-licensed e-ink reader, kept readable and small for this single-page 4.26″ form factor. The board files and onepage target, the mechanical and electronics sources, and this site all live in one open repository.' },
+      ],
+      shotsTitle: 'Straight from the device',
+      shots: [
+        { src: 'home.png', alt: 'OnePage home screen', title: 'Home', caption: 'The library and its entry points — browse files, recent books, file transfer, settings, the app center.' },
+        { src: 'reading.png', alt: 'OnePage reading a Chinese book', title: 'Reading', caption: 'A page of “A Madman’s Diary”, reflowed by the engine at 480×800 with real CJK line-breaking and punctuation.' },
+        { src: 'settings.png', alt: 'OnePage settings', title: 'Settings', caption: 'Display, reading, key and system settings — every option stored on-device under .crosspoint.' },
       ],
     },
     hero: {
@@ -379,18 +381,6 @@ export const ui: Record<Lang, Content> = {
           { k: 'Battery', v: '1000 mAh · rechargeable' },
           { k: 'Charging', v: 'Over USB-C' },
         ] },
-      ],
-    },
-    gallery: {
-      eyebrow: 'Renders',
-      title: 'A first look at the design.',
-      dotLabel: 'View photo',
-      photos: [
-        { src: '/gallery/OnePage-3D-a1.jpg', alt: 'OnePage — seen edge-on', title: 'Genuinely thin', sub: 'Seen edge-on' },
-        { src: '/gallery/OnePage-3D-a2.jpg', alt: 'OnePage — top bezel', title: 'The top quarter', sub: 'Bezels pulled in tight' },
-        { src: '/gallery/OnePage-3D-a3.jpg', alt: 'OnePage — bottom at 45°', title: 'Bottom, at 45°', sub: 'Keys and ports, all in a row' },
-        { src: '/gallery/OnePage-3D-a4.jpg', alt: 'OnePage — wake key', title: 'The wake key', sub: 'Restrained, but easy to reach' },
-        { src: '/gallery/OnePage-3D-a5.jpg', alt: 'OnePage — microSD slot', title: 'A little surprise', sub: 'The microSD slot has a face' },
       ],
     },
     fonts: {
@@ -658,6 +648,12 @@ export const ui: Record<Lang, Content> = {
         { name: '构建与工具链', body: '同一份固件树，三条出口：PlatformIO / ESP-IDF 烧录到设备，CMake + SDL2 目标把它跑成桌面窗口，Emscripten 目标把同一套代码编译成本页可以直接试玩的 WASM 模拟器。配套的浏览器工具 —— .cpfont 字体工坊与卡片工坊 —— 生成的文件直接落进 SD 卡。' },
         { name: '开源根基', body: '阅读内核移植自 MIT 授权的开源墨水屏阅读器 CrossPoint，针对这台 4.26″ 单页形态做了裁剪，保持可读、够小。板级文件与 onepage 目标、结构件与电子件源文件、以及这个网站，都放在同一个开源仓库里。' },
       ],
+      shotsTitle: '来自设备的实拍',
+      shots: [
+        { src: 'home.png', alt: '壹頁 首页', title: '首页', caption: '书架与入口：浏览文件、最近书籍、文件传输、设置、应用中心。' },
+        { src: 'reading.png', alt: '壹頁 阅读中文书', title: '阅读', caption: '《狂人日记》正文，由重排引擎按 480×800 排版，中文换行与标点都由固件处理。' },
+        { src: 'settings.png', alt: '壹頁 设置页', title: '设置', caption: '显示、阅读、按键、系统四类设置，全部保存在设备端的 .crosspoint 里。' },
+      ],
     },
     hero: {
       eyebrow: '4.26 英寸墨水屏阅读器 · 开源固件',
@@ -771,18 +767,6 @@ export const ui: Record<Lang, Content> = {
           { k: '电池', v: '1000 mAh · 可充电' },
           { k: '充电', v: '经 USB-C' },
         ] },
-      ],
-    },
-    gallery: {
-      eyebrow: '渲染',
-      title: '先看看它的样子。',
-      dotLabel: '查看照片',
-      photos: [
-        { src: '/gallery/OnePage-3D-a1.jpg', alt: '壹頁 —— 侧面', title: '它真的很薄', sub: '立起来给你看' },
-        { src: '/gallery/OnePage-3D-a2.jpg', alt: '壹頁 —— 上边框', title: '上方那 1/4', sub: '边框收得很窄' },
-        { src: '/gallery/OnePage-3D-a3.jpg', alt: '壹頁 —— 底部 45°', title: '底部 45° 视角', sub: '三段式按键和接口，一排排开' },
-        { src: '/gallery/OnePage-3D-a4.jpg', alt: '壹頁 —— 唤醒键', title: '唤醒键特写', sub: '克制，但顺手' },
-        { src: '/gallery/OnePage-3D-a5.jpg', alt: '壹頁 —— microSD 卡槽', title: '意外惊喜', sub: 'micro SD 那块，长了一张脸' },
       ],
     },
     fonts: {
