@@ -13,6 +13,7 @@
 #include "MappedInputManager.h"
 #include "ProgressFile.h"
 #include "ReaderUtils.h"
+#include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -45,6 +46,12 @@ void TxtReaderActivity::onEnter() {
   APP_STATE.saveToFile();
   RECENT_BOOKS.addBook(filePath, fileName, "", "");
 
+  // Begin the CrossMux-compatible analytics session (reading_stats.json). Time and
+  // progress are folded in via tickActiveSession()/updateProgress() and committed by
+  // endSession() in onExit(), so TXT reading is shared with CrossMux across reflashes.
+  // TXT has no author/cover metadata; start percent is refined on the first render().
+  READING_STATS.beginSession(filePath, txt->getTitle(), std::string(), std::string(), 0, std::string(), 0);
+
   // Trigger first update
   requestUpdate();
 }
@@ -66,10 +73,20 @@ void TxtReaderActivity::onExit() {
     RECENT_BOOKS.setProgress(txt->getPath(), (currentPage + 1) * 100 / totalPages);
   }
 
+  // Close the analytics session and commit it to the shared CrossMux-compatible file.
+  // endSession() only marks the store dirty; saveToFile() is what persists reading_stats.json
+  // so the session survives sleep/reflash (the network-release checkpoint path is never wired in).
+  READING_STATS.endSession();
+  READING_STATS.saveToFile();
+
   txt.reset();
 }
 
 void TxtReaderActivity::loop() {
+  // Accumulate active reading time for the analytics session (idle-gap aware:
+  // only counts wall time since the last noteActivity() within a bounded window).
+  READING_STATS.tickActiveSession();
+
   // Long press BACK (1s+) goes to file selection
   if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= ReaderUtils::GO_HOME_MS) {
     activityManager.goToFileBrowser(txt ? txt->getPath() : "");
@@ -91,11 +108,13 @@ void TxtReaderActivity::loop() {
   if (prevTriggered && currentPage > 0) {
     currentPage--;
     APP_STATE.bumpPageTurn();
+    READING_STATS.noteActivity();
     requestUpdate();
   } else if (nextTriggered) {
     if (currentPage < totalPages - 1) {
       currentPage++;
       APP_STATE.bumpPageTurn();
+      READING_STATS.noteActivity();
       requestUpdate();
     } else {
       onGoHome();
@@ -386,6 +405,13 @@ void TxtReaderActivity::render(RenderLock&&) {
 
   // Save progress
   saveProgress();
+
+  // Reflect the current position in the shared stats store (percent-based,
+  // CrossMux-compatible). Captures the resumed page on open and every repaint.
+  if (totalPages > 0) {
+    const uint8_t pct = static_cast<uint8_t>((currentPage + 1) * 100 / totalPages);
+    READING_STATS.updateProgress(pct, pct >= 100, std::string(), 0);
+  }
 }
 
 void TxtReaderActivity::renderPage() {

@@ -585,6 +585,7 @@ void ReadingStatsStore::rebuildSummaryCache() const {
 
   for (const auto& book : books) {
     cache.totalReadingMs += book.totalReadingMs;
+    cache.totalSessions += book.sessions;
     if (book.completed) {
       cache.booksFinishedCount++;
     }
@@ -963,6 +964,13 @@ uint32_t ReadingStatsStore::getBooksFinishedCount() const {
     rebuildSummaryCache();
   }
   return summaryCache.booksFinishedCount;
+}
+
+uint32_t ReadingStatsStore::getTotalSessions() const {
+  if (!summaryCache.valid || summaryCache.goalReadingMs != getDailyReadingGoalMs()) {
+    rebuildSummaryCache();
+  }
+  return summaryCache.totalSessions;
 }
 
 uint64_t ReadingStatsStore::getTotalReadingMs() const {

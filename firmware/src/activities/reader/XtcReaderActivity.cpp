@@ -19,6 +19,7 @@
 #include "MappedInputManager.h"
 #include "ProgressFile.h"
 #include "ReaderUtils.h"
+#include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "XtcReaderChapterSelectionActivity.h"
 #include "components/UITheme.h"
@@ -44,6 +45,17 @@ void XtcReaderActivity::onEnter() {
   APP_STATE.saveToFile();
   RECENT_BOOKS.addBook(xtc->getPath(), xtc->getTitle(), xtc->getAuthor(), xtc->getThumbBmpPath());
 
+  // Begin the CrossMux-compatible analytics session (reading_stats.json). Time and
+  // progress are folded in via tickActiveSession()/updateProgress() and committed by
+  // endSession() in onExit(), so XTC reading is shared with CrossMux across reflashes.
+  {
+    const uint32_t pageCount = xtc->getPageCount();
+    const uint32_t startPage = (pageCount > 0 && currentPage >= pageCount) ? pageCount - 1 : currentPage;
+    const uint8_t startPct = pageCount > 0 ? xtc->calculateProgress(startPage) : 0;
+    READING_STATS.beginSession(xtc->getPath(), xtc->getTitle(), xtc->getAuthor(), xtc->getThumbBmpPath(), startPct,
+                               std::string(), 0);
+  }
+
   // Trigger first update
   requestUpdate();
 }
@@ -61,10 +73,20 @@ void XtcReaderActivity::onExit() {
     RECENT_BOOKS.setProgress(xtc->getPath(), static_cast<int>(xtc->calculateProgress(clamped) * 100.0f));
   }
 
+  // Close the analytics session and commit it to the shared CrossMux-compatible file.
+  // endSession() only marks the store dirty; saveToFile() is what persists reading_stats.json
+  // so the session survives sleep/reflash (the network-release checkpoint path is never wired in).
+  READING_STATS.endSession();
+  READING_STATS.saveToFile();
+
   xtc.reset();
 }
 
 void XtcReaderActivity::loop() {
+  // Accumulate active reading time for the analytics session (idle-gap aware:
+  // only counts wall time since the last noteActivity() within a bounded window).
+  READING_STATS.tickActiveSession();
+
   // Enter chapter selection activity
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     if (xtc && xtc->hasChapters() && !xtc->getChapters().empty()) {
@@ -118,6 +140,7 @@ void XtcReaderActivity::loop() {
       currentPage = 0;
     }
     APP_STATE.bumpPageTurn();
+    READING_STATS.noteActivity();
     requestUpdate();
   } else if (nextTriggered) {
     currentPage += skipAmount;
@@ -125,6 +148,7 @@ void XtcReaderActivity::loop() {
       currentPage = xtc->getPageCount();  // Allow showing "End of book"
     }
     APP_STATE.bumpPageTurn();
+    READING_STATS.noteActivity();
     requestUpdate();
   }
 }
@@ -145,6 +169,15 @@ void XtcReaderActivity::render(RenderLock&&) {
 
   renderPage();
   saveProgress();
+
+  // Reflect the current position in the shared stats store (percent-based,
+  // CrossMux-compatible). calculateProgress already returns a 0-100 percent.
+  if (xtc && xtc->getPageCount() > 0) {
+    const uint32_t pageCount = xtc->getPageCount();
+    const uint32_t clamped = (currentPage >= pageCount) ? pageCount - 1 : currentPage;
+    const uint8_t pct = xtc->calculateProgress(clamped);
+    READING_STATS.updateProgress(pct, pct >= 100, std::string(), 0);
+  }
 }
 
 XtcReaderActivity::StatusBarInfo XtcReaderActivity::getStatusBarInfo() const {

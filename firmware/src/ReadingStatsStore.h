@@ -64,6 +64,7 @@ class ReadingStatsStore {
     bool valid = false;
     uint32_t referenceDayOrdinal = 0;
     uint32_t booksFinishedCount = 0;
+    uint32_t totalSessions = 0;
     uint64_t totalReadingMs = 0;
     uint64_t todayReadingMs = 0;
     uint64_t recent7ReadingMs = 0;
@@ -161,6 +162,10 @@ class ReadingStatsStore {
 
   uint32_t getBooksStartedCount() const { return static_cast<uint32_t>(books.size()); }
   uint32_t getBooksFinishedCount() const;
+  // Lifetime reading session count summed across books. Unlike getSessionLog().size(),
+  // this is NOT gated on a valid wall clock, so it stays correct on boards without an
+  // RTC (C61) that never got time-synced. Preferred for user-facing "sessions".
+  uint32_t getTotalSessions() const;
   uint64_t getTotalReadingMs() const;
   uint64_t getTodayReadingMs() const;
   uint64_t getRecentReadingMs(uint32_t days) const;

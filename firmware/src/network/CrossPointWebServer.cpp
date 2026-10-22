@@ -16,6 +16,7 @@
 #include "CrossPointState.h"
 #include "FontInstaller.h"
 #include "OpdsServerStore.h"
+#include "ReadingStatsStore.h"
 #include "SdCardFontSystem.h"
 #include "SettingsList.h"
 #include "WebDAVHandler.h"
@@ -415,10 +416,13 @@ void CrossPointWebServer::handleStatus() const {
 void CrossPointWebServer::handleStats() const {
   server->sendHeader("Access-Control-Allow-Origin", "*");
 
+  // Source of truth is the CrossMux-compatible store (/.crosspoint/reading_stats.json),
+  // shared across reflashes. totalPagesTurns stays an OnePage-only extra field, since
+  // CrossMux records time/sessions but not page turns; the browser ignores unknown keys.
   JsonDocument doc;
-  doc["totalReadingSeconds"] = APP_STATE.totalReadingSeconds;
+  doc["totalReadingSeconds"] = static_cast<uint32_t>(READING_STATS.getTotalReadingMs() / 1000ULL);
   doc["totalPagesTurns"] = APP_STATE.totalPagesTurns;
-  doc["readingSessions"] = APP_STATE.readingSessions;
+  doc["readingSessions"] = READING_STATS.getTotalSessions();
   doc["uptime"] = millis() / 1000;
 
   String json;

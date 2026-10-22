@@ -259,6 +259,10 @@ void EpubReaderActivity::onExit() {
   // Close the analytics session after the final updateProgress() (footnote save
   // above) so the idle-gap trimmed duration and last position are both captured.
   READING_STATS.endSession();
+  // endSession() only marks the store dirty; persist reading_stats.json here so EPUB
+  // reading survives sleep/reflash and stays compatible with CrossMux's shared file
+  // (the network-release checkpoint path that would otherwise flush it is never wired in).
+  READING_STATS.saveToFile();
 
   section.reset();
   // Persist any in-RAM clipping edits before dropping the store; a mid-session

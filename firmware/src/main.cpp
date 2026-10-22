@@ -741,6 +741,14 @@ void loop() {
   activityManager.loop();
   const unsigned long activityDuration = millis() - activityStartTime;
 
+  // Periodically checkpoint the reading-stats store while a session is active, so an
+  // abrupt power loss mid-read doesn't drop the whole session (the reader onExit save
+  // covers the clean-exit path). shouldSaveCheckpoint() gates on dirty+active+interval
+  // to bound SD write frequency.
+  if (READING_STATS.shouldSaveCheckpoint()) {
+    READING_STATS.saveToFile();
+  }
+
   const unsigned long loopDuration = millis() - loopStartTime;
   if (loopDuration > maxLoopDuration) {
     maxLoopDuration = loopDuration;

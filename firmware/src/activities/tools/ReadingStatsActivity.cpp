@@ -57,14 +57,13 @@ void ReadingStatsActivity::render(RenderLock&&) {
   const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
   const int contentBottom = pageHeight - (metrics.buttonHintsHeight + metrics.verticalSpacing);
 
-  const auto& state = APP_STATE;
   // Authoritative figures come from the ReadingStatsStore engine (persisted to
   // reading_stats.json); the store buckets by local day ordinal so the recent
   // chart and "today" highlight share one calendar with the streak counter.
   const uint32_t totalSeconds = static_cast<uint32_t>(READING_STATS.getTotalReadingMs() / 1000ULL);
   const uint32_t todaySeconds = static_cast<uint32_t>(READING_STATS.getTodayReadingMs() / 1000ULL);
   const uint32_t streakDays = READING_STATS.getCurrentStreakDays();
-  const uint32_t sessions = state.readingSessions;
+  const uint32_t sessions = READING_STATS.getTotalSessions();
   const uint32_t today = READING_STATS.getTodayDayOrdinal();
   const int cardX = 14;
   const int cardW = pageWidth - cardX * 2;
