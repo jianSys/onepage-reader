@@ -338,13 +338,13 @@ export const ui: Record<Lang, Content> = {
       title: 'A personal project, not a product.',
       body: [
         'OnePage is something I’m building for the fun of it — to read the way I like, on hardware I understand. It isn’t a startup and it isn’t chasing a market.',
-        'I’m keeping the notes in the open: the decisions, the dead ends, and the occasional thing that finally works. If that’s your kind of thing, follow along.',
+        'I’ve laid out how it actually works on this site — the firmware, the tools, where every part comes from. It’s all here if you want to poke around.',
       ],
     },
     footer: {
       tagline: 'OnePage · 壹頁 — a 4.26″ e-ink reader.',
-      openSource: 'Built on CrossPoint (MIT). My port and these notes are shared openly.',
-      rights: 'A personal build log. Names and brand are still settling.',
+      openSource: 'Built on CrossPoint (MIT). The port and everything around it are documented in the open.',
+      rights: 'A personal project, shared in the open. Names and brand are still settling.',
     },
     specs: {
       eyebrow: 'Tech specs',
@@ -724,13 +724,13 @@ export const ui: Record<Lang, Content> = {
       title: '一个个人项目，不是产品。',
       body: [
         '壹頁是我纯为兴趣做的东西 —— 想按自己喜欢的方式读书，在自己摸得透的硬件上。它不是创业，也不在抢什么市场。',
-        '我会把笔记一直放在明处：那些决定、走过的死胡同、偶尔终于跑通的小确幸。要是你也喜欢这种，就一起围观吧。',
+        '我把它到底怎么运转都摊在这个站上 —— 固件、工具、每样零件的来处。想拆着看，内容都在这儿。',
       ],
     },
     footer: {
       tagline: '壹頁 · OnePage —— 一台 4.26″ 墨水屏阅读器。',
-      openSource: '基于开源的 CrossPoint（MIT）。我的移植和这些笔记都公开分享。',
-      rights: '一份个人开发记录。名字和品牌还在慢慢定。',
+      openSource: '基于开源的 CrossPoint（MIT）。移植和围绕它的一切，都公开写在这里。',
+      rights: '一个公开的个人项目。名字和品牌还在慢慢定。',
     },
     specs: {
       eyebrow: '参数',
